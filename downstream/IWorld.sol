@@ -13,5 +13,8 @@ interface IWorld {
 
   function copyMap(bytes32 matchEntity) external;
   function buySeasonPass(address account) external payable;
-
+  function register(bytes32 matchEntity, uint256 spawnIndex, bytes32 heroChoice) external returns (bytes32);
+  function getWinningPlayer(bytes32 matchEntity) external view returns (bytes32);
+  function isAddressWinner(address playerAddress, bytes32 matchEntity) external view returns (bool);
+  
 }

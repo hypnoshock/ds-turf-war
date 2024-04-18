@@ -1,0 +1,37 @@
+---
+kind: BuildingKind
+spec:
+  category: custom
+  name: Judge
+  description: "The judge of all turf wars and This building increments an on-chain counter and drives the counter displays"
+  model: 02-07
+  color: 5
+  contract:
+    file: ./Judge.sol
+  plugin:
+    file: ./Judge.js
+    alwaysActive: true
+  materials:
+    - name: Red Goo
+      quantity: 10
+    - name: Green Goo
+      quantity: 10
+    - name: Blue Goo
+      quantity: 10
+  inputs:
+    - name: Red Goo
+      quantity: 1
+  outputs:
+    - name: TilePrize
+      quantity: 1
+
+---
+kind: Item
+spec:
+  name: TilePrize
+  icon: 31-270
+  goo:
+    red: 12
+    green: 0
+    blue: 0
+  stackable: false

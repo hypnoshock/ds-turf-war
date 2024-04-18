@@ -1,0 +1,15 @@
+{
+  "name": "turfwars",
+  "workspaces": [
+    "contracts",
+    "downstream"
+  ],
+  "version": "1.0.0",
+  "description": "A game built on Downstream that uses Skystrife for the battle layer.",
+  "main": "index.js",
+  "scripts": {
+    "deploy:local": "./deploy-local.sh"
+  },
+  "author": "",
+  "license": "ISC"
+}

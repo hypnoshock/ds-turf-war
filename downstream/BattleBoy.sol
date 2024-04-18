@@ -7,27 +7,55 @@ import {Schema} from "@ds/schema/Schema.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {BuildingKind} from "@ds/ext/BuildingKind.sol";
 import {IWorld} from "./IWorld.sol";
+import {IJudgeBuilding} from "./IJudgeBuilding.sol";
 import {LibString} from "./LibString.sol";
+import {LibUtils} from "./LibUtils.sol";
+import {IBattleBoy} from "./IBattleBoy.sol";
 
 using Schema for State;
 
-contract BattleBoy is BuildingKind {
+contract BattleBoy is BuildingKind, IBattleBoy {
     address constant WORLD_CONTRACT_ADDR = 0x46B80846B0A65849d689e6402a365cec49B648B6;
 
     bytes32 constant LEVEL_FOUR_PLAYER = 0x4361756c64726f6e2d3200000000000000000000000000000000000000000000;
     bytes32 constant LEVEL_KNIFE_FIGHT = 0x4b6e6966655f46696768745f3200000000000000000000000000000000000000;
-    bytes32 constant FIRST_MATCH_IN_WINDOW = 0x568fbbea00000000000000000000000000000000000000000000000000000000; // param after name
+    bytes32 constant LEVEL_ISLE = 0x5468652049736c65000000000000000000000000000000000000000000000000;
+
+    bytes32 constant SELECTED_LEVEL = LEVEL_KNIFE_FIGHT;
+                                        
     bytes32 constant HERO = 0x48616c6265726469657200000000000000000000000000000000000000000000;
 
     function buySeasonPass() external {}
-    function startWar() external {}
+    function startBattle() external {}
+    function claimWin(bytes24 judgeInstance) external {}
 
-    function use(Game ds, bytes24 buildingInstance, bytes24, /*actor*/ bytes memory payload ) public override {
+    bytes32 public firstMatchInWindow;
+    IJudgeBuilding public judgeBuilding;
+
+    // -- Might need these if I have to buy the season pass from this contract
+    // fallback () external payable {}
+    // receive () external payable {}
+
+    function use(Game ds, bytes24 buildingInstance, bytes24 actor, bytes calldata payload ) public override {
         if ((bytes4)(payload) == this.buySeasonPass.selector) {
             _buySeasonPass(ds, buildingInstance);
-        } else if ((bytes4)(payload) == this.startWar.selector) {
-            _startWar(ds, buildingInstance);
-        } 
+        } else if ((bytes4)(payload) == this.startBattle.selector) {
+            _startBattle(ds, buildingInstance);
+        } else if ((bytes4)(payload) == this.claimWin.selector) {
+            bytes24 judgeInstance = abi.decode(payload[4:], (bytes24));
+            _claimWin(ds, buildingInstance, actor, judgeInstance);
+        } else {
+            revert("Invalid function selector");
+        }
+    }
+
+    // TODO: Owner only
+    function setFirstMatchInWindow(bytes32 _firstMatchInWindow) public {
+        firstMatchInWindow = _firstMatchInWindow;
+    }
+
+    function setJudgeBuilding(address judgeAddr) public {
+        judgeBuilding = IJudgeBuilding(judgeAddr);
     }
 
     function _buySeasonPass(Game ds, bytes24 buildingInstance) internal {
@@ -44,7 +72,7 @@ contract BattleBoy is BuildingKind {
         );
     }
 
-    function _startWar(Game ds, bytes24 buildingInstance) internal {
+    function _startBattle(Game ds, bytes24 buildingInstance) internal {
         State state = ds.getState();
 
         IWorld world = IWorld(WORLD_CONTRACT_ADDR);
@@ -55,14 +83,47 @@ contract BattleBoy is BuildingKind {
         );
         string memory name = string(abi.encodePacked("Downstream_", LibString.toString(uint256(count))));
 
-        bytes32 claimedFirstMatchInWindow = FIRST_MATCH_IN_WINDOW;
         bytes32 entityID = _getEntityID(ds, buildingInstance); // bytes32(0x153038b100000000000000000000000000000000000000000000000000000000);
 
-        world.createMatch(name, claimedFirstMatchInWindow, entityID, LEVEL_FOUR_PLAYER);
+        world.createMatch(name, firstMatchInWindow, entityID, SELECTED_LEVEL);
         world.copyMap(entityID);
+
+        bytes24 tile = state.getFixedLocation(buildingInstance);
+        string memory tileMatchKey = LibUtils.getTileMatchKey(tile);
+        ds.getDispatcher().dispatch(
+            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, tileMatchKey, entityID))
+        );
 
         // Join the match (Can't do this... as the building would be joining the war)
         // world.register(entityID, 0, HERO);
+    }
+
+    function _claimWin(Game ds, bytes24 buildingInstance, bytes24 actor, bytes24 judgeInstance) internal {
+        require(address(judgeBuilding) != address(0), "BattleBoy: JudgeBuilding not set");
+        
+        State state = ds.getState();
+
+        IWorld world = IWorld(WORLD_CONTRACT_ADDR);
+        
+        bytes24 tile = state.getFixedLocation(buildingInstance);
+        string memory tileMatchKey = LibUtils.getTileMatchKey(tile);
+        bytes32 entityID = state.getData(buildingInstance, tileMatchKey);
+        
+        require(entityID != 0, "No match to claim win for");
+
+        bytes24 player = state.getOwner(actor);
+        address playerAddress = state.getOwnerAddress(player);
+
+        require(world.isAddressWinner(playerAddress, entityID), "Player is not the winner");
+
+        judgeBuilding.setTileWinner(tile, player, judgeInstance);
+
+        // WARN: This doesn't work on the Redstone deployment
+        // Destroy the building now we are done
+        (int16 z, int16 q, int16 r, int16 s) = LibUtils.getTileCoords(tile);
+        ds.getDispatcher().dispatch(
+            abi.encodeCall(Actions.DEV_DESTROY_BUILDING, (z, q, r, s))
+        );
     }
 
     // function _joinWar(Game ds, bytes24 buildingInstance) internal {
@@ -79,6 +140,8 @@ contract BattleBoy is BuildingKind {
     //     bytes32 claimedFirstMatchInWindow = FIRST_MATCH_IN_WINDOW;
     //     bytes32 entityID = _getEntityID(ds, buildingInstance); // bytes32(0x153038b100
     // }
+
+
 
 //////////////////////////////////////// SHITE BELOW ////////////////////////////////////////
 

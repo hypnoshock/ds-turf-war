@@ -1,0 +1,10 @@
+{
+  "name": "downstream",
+  "scripts": {
+    "deploy:local:all": "source ../.env && ds -z $DS_ZONE -k $DS_DEPLOY_KEY -n local apply -R -f .",
+    "deploy:local:battle": "source ../.env && ds -z $DS_ZONE -k $DS_DEPLOY_KEY -n local apply -f ./BattleBoy.yaml"
+  },
+  "devDependencies": {
+    "@playmint/ds-cli": "^0.0.28"
+  }
+}
