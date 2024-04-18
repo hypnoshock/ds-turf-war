@@ -1,0 +1,19 @@
+---
+kind: BuildingKind
+spec:
+  category: custom
+  name: Battle
+  description: Initiate battle on tile
+  model: 02-07
+  color: 5
+  contract:
+    file: ./BattleBoy.sol
+  plugin:
+    file: ./BattleBoy.js
+  materials:
+    - name: Red Goo
+      quantity: 10
+    - name: Green Goo
+      quantity: 10
+    - name: Blue Goo
+      quantity: 10
