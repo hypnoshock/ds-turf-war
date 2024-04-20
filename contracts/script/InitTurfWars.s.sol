@@ -7,14 +7,18 @@ import "forge-std/console.sol";
 import { IERC20Mintable } from "@latticexyz/world-modules/src/modules/erc20-puppet/IERC20Mintable.sol";
 import { StoreSwitch } from "@latticexyz/store/src/StoreSwitch.sol";
 
+import { SkyPoolConfig, MatchIndexToEntity, MatchSky } from "../src/codegen/index.sol";
+
 import { IWorld } from "../src/codegen/world/IWorld.sol";
-import { SkyPoolConfig } from "../src/codegen/index.sol";
 import { IBattleBoy } from "downstream/IBattleBoy.sol";
 import { IJudgeBuilding } from "downstream/IJudgeBuilding.sol";
 
 import { Game } from "../src/ds/IGame.sol";
 import { State } from "../src/ds/IState.sol";
 import { Schema, Node, BuildingCategory } from "../src/ds/Schema.sol";
+
+import { TurfWars } from "../src/TurfWars.sol";
+import { Helper } from "../src/Helper.sol";
 
 using Schema for State;
 
@@ -23,9 +27,9 @@ contract InitTurfWars is Script {
 
     function run() public {
         uint256 dsDeployKey = vm.envUint("DS_DEPLOY_KEY");
+        address dsDeployAddr = vm.addr(dsDeployKey);
         uint256 ssDeployKey = vm.envUint("SS_DEPLOY_KEY");
         address ssDeployAddr = vm.addr(ssDeployKey);
-        bytes32 firstMatchInWindow = vm.envBytes32("FIRST_MATCH_IN_WINDOW");
                 
         Game ds = Game(vm.envAddress("DS_GAME_ADDR"));
         State state = ds.getState();
@@ -49,19 +53,41 @@ contract InitTurfWars is Script {
         require(address(judgeBuilding) != address(0), "Judge Building not found");
         console.log("Judge Building Address: %s", address(judgeBuilding));      
 
+        bytes32 firstMatchInWindow = Helper.findFirstMatchInWindow(SkyPoolConfig.getWindow());
+        require (firstMatchInWindow != 0, "No match found in window");
+        console.log("First Match in Window: %x", uint32(uint256(firstMatchInWindow >> 224)));
+
+        // -- Downstream 
         vm.startBroadcast(dsDeployKey);
 
-        battleBuilding.setJudgeBuilding(address(judgeBuilding));
-        battleBuilding.setFirstMatchInWindow(firstMatchInWindow);
+        TurfWars turfWars = (new TurfWars){value: 0.05 ether}(ds, world, orbToken, battleBuilding, judgeBuilding);
+        console.log("TurfWars balance: %s", address(turfWars).balance);
 
-        judgeBuilding.setGame(address (ds));
-        // judgeBuilding.setBuildingInstance(buildingInstance);
+        battleBuilding.init(
+            dsDeployAddr,
+            address(judgeBuilding),
+            address(world),
+            address(turfWars),
+            firstMatchInWindow
+        );
+
+        judgeBuilding.init(
+            dsDeployAddr,
+            address(ds),
+            battleBuilding
+        );
 
         vm.stopBroadcast();
 
+        // -- Sky Strife
         vm.startBroadcast(ssDeployKey);
-        orbToken.transfer(address(battleBuilding), 500 ether);
+        orbToken.mint(address(turfWars), 10_000 ether);
+        orbToken.mint(address(ssDeployAddr), 10_000 ether);
+        
+        // On Redstone cannot mind obviously so transfer from deployer
+        //orbToken.transfer(address(turfWars), 500 ether);
 
         vm.stopBroadcast();
     }
+
 }

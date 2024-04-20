@@ -7,23 +7,14 @@ export default async function update(state) {
   const selectedBuilding =
     selectedTile && getBuildingOnTile(state, selectedTile);
 
-  const implementationAddr = selectedBuilding.kind.implementation.id.slice(-40);
-  console.log("implementationAddr", implementationAddr);
-  console.log("selectedBuilding", selectedBuilding);
-
-  const matchID = getData(selectedBuilding, getTileMatchKey(selectedBuilding));
-  const winner = getData(selectedBuilding, getTileWinnerKey(selectedBuilding));
-
-  console.log("matchID", matchID);
-  console.log("winner", winner);
-
-  const buySeasonPass = () => {
-    const payload = ds.encodeCall("function buySeasonPass()", []);
-    ds.dispatch({
-      name: "BUILDING_USE",
-      args: [selectedBuilding.id, mobileUnit.id, payload],
-    });
-  };
+  // DEBUG
+  // const implementationAddr = selectedBuilding.kind.implementation.id.slice(-40);
+  // console.log("implementationAddr", implementationAddr);
+  // console.log("selectedBuilding", selectedBuilding);
+  // const matchID = getData(selectedBuilding, getTileMatchKey(selectedBuilding));
+  // const winner = getData(selectedBuilding, getTileWinnerKey(selectedBuilding));
+  // console.log("matchID", matchID);
+  // console.log("winner", winner);
 
   const startBattle = () => {
     const payload = ds.encodeCall("function startBattle()", []);
@@ -65,12 +56,6 @@ export default async function update(state) {
             html: ``,
 
             buttons: [
-              {
-                text: "Buy Season Pass",
-                type: "action",
-                action: buySeasonPass,
-                disabled: false,
-              },
               {
                 text: "Start Battle",
                 type: "action",

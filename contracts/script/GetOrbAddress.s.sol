@@ -9,9 +9,10 @@ import { StoreSwitch } from "@latticexyz/store/src/StoreSwitch.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SkyPoolConfig } from "../src/codegen/index.sol";
 import { IERC20Mintable } from "@latticexyz/world-modules/src/modules/erc20-puppet/IERC20Mintable.sol";
-import { Game } from "../src/ds/IGame.sol";
-import { State } from "../src/ds/IState.sol";
+import { Game } from "ds/IGame.sol";
+import { State } from "ds/IState.sol";
 import { Schema, Node, BuildingCategory } from "../src/ds/Schema.sol";
+import { IBattleBoy } from "downstream/IBattleBoy.sol";
 
 using Schema for State;
 
@@ -28,14 +29,15 @@ contract GetOrbAddress is Script {
     Game ds = Game(vm.envAddress("DS_GAME_ADDR"));
     State state = ds.getState();
     bytes24 battleBuildingKind = Node.BuildingKind("Battle", BuildingCategory.CUSTOM);
-    address battleBuilding = address(state.getImplementation(battleBuildingKind));
+    IBattleBoy battleBoy = IBattleBoy(state.getImplementation(battleBuildingKind));
+    address turfWars = address(battleBoy.turfWars());
 
     IERC20Mintable token = IERC20Mintable(SkyPoolConfig.getOrbToken());
     console.log("Orb Token Address: %s", address(token));
 
     uint256 adminBal = token.balanceOf(ssDeployAddr) / 10 ** 18;
-    uint256 buildingBal = token.balanceOf(battleBuilding) / 10 ** 18;
+    uint256 buildingBal = token.balanceOf(turfWars) / 10 ** 18;
     console.log("Admin Bal: %s", adminBal);
-    console.log("Building Orb Bal: %s", buildingBal);
+    console.log("TurfWars Orb Bal: %s", buildingBal);
   }
 }

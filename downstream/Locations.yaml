@@ -434,5 +434,5 @@ spec:
 kind: Building
 spec:
   name: Judge
-  location: [-1, 6, -5]
+  location: [2, 0, -2]
   facingDirection: RIGHT

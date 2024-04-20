@@ -10,6 +10,7 @@ import {BuildingKind} from "@ds/ext/BuildingKind.sol";
 import "@ds/utils/LibString.sol";
 import {LibUtils} from "./LibUtils.sol";
 import {IJudgeBuilding} from "./IJudgeBuilding.sol";
+import {IBattleBoy} from "./IBattleBoy.sol";
 
 using Schema for State;
 
@@ -28,8 +29,19 @@ contract BasicFactory is BuildingKind, IJudgeBuilding {
     function claim() external {}
     function reset() external {}
 
-    Game _ds; // set by init script
-    bytes24 _buildingInstance; // set on reset from building UI. TODO: There can only be one in the universe!!
+    address owner;
+    Game _ds;
+    IBattleBoy _battleBuilding;
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Judge: Only owner can call this function");
+        _;
+    }
+
+    modifier onlyBattleBuilding() {
+        require(msg.sender == address(_battleBuilding), "Judge: Only battle building can call this function");
+        _;
+    }
 
     function use(Game ds, bytes24 buildingInstance, bytes24 actor, bytes calldata payload) public override {
         State state = GetState(ds);
@@ -50,22 +62,33 @@ contract BasicFactory is BuildingKind, IJudgeBuilding {
         );
     }
 
-    // TODO: only callable by battle buildling
-    function setTileWinner(bytes24 tile, bytes24 player, bytes24 judgeInstance) public {
+    function init(
+        address _owner,
+        address ds,
+        IBattleBoy battleBuilding
+    ) public {
+        if (owner != address(0) && msg.sender != owner) {
+            revert("Judge: Only owner can reinitialize");
+        }
+        owner = _owner;
+        _ds = Game(ds);
+        _battleBuilding = battleBuilding;
+    }
+
+    function setGame(address game) public onlyOwner {
+        _ds = Game(game);
+    }
+
+    function setBattleBuilding(IBattleBoy battleBuilding) public onlyOwner {
+        _battleBuilding = battleBuilding;
+    }
+
+    function setTileWinner(bytes24 tile, bytes24 player, bytes24 judgeInstance) public onlyBattleBuilding {
         require(judgeInstance != bytes24(0), "Judge: Building instance not set.");
 
         _ds.getDispatcher().dispatch(
             abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (judgeInstance, LibUtils.getTileWinnerKey(tile), player))
         );
-    }
-
-    // TODO: only callable by owner
-    function setGame(address game) public {
-        _ds = Game(game);
-    }
-
-    function setBuildingInstance(bytes24 buildingInstance) public {
-        _buildingInstance = buildingInstance;
     }
 
     function _join(Game ds, State state, bytes24 unitId, bytes24 buildingId) private {
@@ -310,8 +333,6 @@ contract BasicFactory is BuildingKind, IJudgeBuilding {
     }
 
     function _reset(Game ds, bytes24 buildingId) private {
-        _buildingInstance = buildingId;
-
         Dispatcher dispatcher = ds.getDispatcher();
 
         // todo - do we check if all claims have been made ?

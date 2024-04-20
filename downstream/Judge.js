@@ -128,9 +128,8 @@ export default async function update(state, block) {
 
   /////////////////////////////// UPDATE LOOP ///////////////////////////////
 
-  // Easier way of getting the implementation address during deploy?
-  const implementationAddr = selectedBuilding.kind.implementation.id.slice(-40);
-  console.log("Judge implementationAddr", implementationAddr);
+  // const implementationAddr = selectedBuilding.kind.implementation.id.slice(-40);
+  // console.log("Judge implementationAddr", implementationAddr);
 
   const {
     prizePool,
@@ -141,7 +140,9 @@ export default async function update(state, block) {
     teamBurgerLength,
     teamATiles,
     teamBTiles,
-  } = getTurfWarsState(selectedBuilding);
+    teamAPlayers,
+    teamBPlayers,
+  } = getTurfWarsState(state, selectedBuilding);
 
   const { unitFeeBagSlot, unitFeeItemSlot } = getMobileUnitFeeSlot(state);
   const hasFee = unitFeeBagSlot >= 0;
@@ -177,16 +178,17 @@ export default async function update(state, block) {
       value: "Unit_Hoodie_02", // yellow hoodie
     });
 
-    if (!p1TileList.includes(tId) && !p2TileList.includes(tId)) {
-      p1TileList.push(tId);
+    // -- Lighting up the tile beneath the unit
+    // if (!p1TileList.includes(tId) && !p2TileList.includes(tId)) {
+    //   p1TileList.push(tId);
 
-      unitMapObj.push({
-        type: "tile",
-        key: "color",
-        id: getTileIdFromCoords(unitTileCoords),
-        value: "#FEC953",
-      });
-    }
+    //   unitMapObj.push({
+    //     type: "tile",
+    //     key: "color",
+    //     id: getTileIdFromCoords(unitTileCoords),
+    //     value: "#FEC953",
+    //   });
+    // }
   }
   for (let i = 0; i < teamBurgerLength; i++) {
     const unitId = getHQTeamUnit(selectedBuilding, "Burger", i);
@@ -210,16 +212,17 @@ export default async function update(state, block) {
       value: "Unit_Hoodie_05", // red hoodie
     });
 
-    if (!p1TileList.includes(tId) && !p2TileList.includes(tId)) {
-      p2TileList.push(tId);
+    // -- Lighting up the tile beneath the unit
+    // if (!p1TileList.includes(tId) && !p2TileList.includes(tId)) {
+    //   p2TileList.push(tId);
 
-      unitMapObj.push({
-        type: "tile",
-        key: "color",
-        id: getTileIdFromCoords(unitTileCoords),
-        value: "#F20D7B",
-      });
-    }
+    //   unitMapObj.push({
+    //     type: "tile",
+    //     key: "color",
+    //     id: getTileIdFromCoords(unitTileCoords),
+    //     value: "#F20D7B",
+    //   });
+    // }
   }
 
   const counterOneBuilding = state.world?.buildings.find(
@@ -325,7 +328,6 @@ export default async function update(state, block) {
         // Orange tile under the unit
         if (!p1TileList.includes(tId) && !p2TileList.includes(tId)) {
           p1TileList.push(tId);
-          console.log(p1TileList.length);
 
           unitMapObj.push({
             type: "tile",
@@ -496,7 +498,7 @@ export default async function update(state, block) {
 
 // --- Duckbur HQ Specific functions
 
-function getTurfWarsState(selectedBuilding) {
+function getTurfWarsState(state, selectedBuilding) {
   const prizePool = getDataInt(selectedBuilding, "prizePool");
   const gameActive = getDataBool(selectedBuilding, "gameActive");
   const startBlock = getDataInt(selectedBuilding, "startBlock");
@@ -512,20 +514,52 @@ function getTurfWarsState(selectedBuilding) {
   const teamDuckLength = getDataInt(selectedBuilding, "teamDuckLength");
   const teamBurgerLength = getDataInt(selectedBuilding, "teamBurgerLength");
 
+  const teamAPlayers = [];
+  for (let i = 0; i < teamDuckLength; i++) {
+    const unitId = getHQTeamUnit(selectedBuilding, "Duck", i);
+    const mobileUnit = state.world?.mobileUnits?.find(
+      (unit) => unit.id === unitId
+    );
+    if (mobileUnit) {
+      teamAPlayers.push(mobileUnit.owner.id);
+    }
+  }
+
+  const teamBPlayers = [];
+  for (let i = 0; i < teamBurgerLength; i++) {
+    const unitId = getHQTeamUnit(selectedBuilding, "Burger", i);
+    const mobileUnit = state.world?.mobileUnits?.find(
+      (unit) => unit.id === unitId
+    );
+    if (mobileUnit) {
+      teamBPlayers.push(mobileUnit.owner.id);
+    }
+  }
+
   const teamATiles = [];
   const teamBTiles = [];
   selectedBuilding.allData.forEach((data) => {
     if (data.name.includes("_winner")) {
       const tileId = data.name.split("_")[0];
-
+      console.log(
+        "comparing: ",
+        data.value.slice(0, 50).toLowerCase(),
+        "with: ",
+        teamAPlayers,
+        teamBPlayers
+      );
       if (
-        data.value ==
-        "0x045820b3f39Fd6e51aad88F6F4ce6aB8827279cffFb922660000000000000000"
+        !!teamAPlayers.some(
+          (playerAddr) =>
+            playerAddr.toLowerCase() == data.value.slice(0, 50).toLowerCase()
+        )
       ) {
         teamATiles.push(tileId);
       } else if (
-        data.value ==
-        "0x045820b323618e81e3f5cdf7f54c3d65f7fbc0abf5b21e8f0000000000000000"
+        !!teamBPlayers.some(
+          (playerAddr) =>
+            playerAddr.toLowerCase() == data.value.slice(0, 50).toLowerCase()
+        )
       ) {
         teamBTiles.push(tileId);
       }
@@ -544,6 +578,8 @@ function getTurfWarsState(selectedBuilding) {
     teamBurgerLength,
     teamATiles,
     teamBTiles,
+    teamAPlayers,
+    teamBPlayers,
   };
 }
 
