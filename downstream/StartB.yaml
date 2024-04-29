@@ -1,0 +1,15 @@
+---
+kind: BuildingKind
+spec:
+  name: StartB
+  description: "Starting point for Team B"
+  category: custom
+  model: 00-00
+  color: 3
+  materials:
+    - name: Red Goo
+      quantity: 10
+    - name: Green Goo
+      quantity: 10
+    - name: Blue Goo
+      quantity: 10

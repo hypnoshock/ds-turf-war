@@ -2,7 +2,7 @@
 kind: BuildingKind
 spec:
   category: custom
-  name: Turf Wars HQ building
+  name: Turf Wars HQ
   description: "Welcome to Turf Wars. From this building you can join a team."
   model: 02-07
   color: 5

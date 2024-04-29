@@ -1,0 +1,15 @@
+---
+kind: BuildingKind
+spec:
+  name: StartA
+  description: "Starting point for Team A"
+  category: custom
+  model: 00-00
+  color: 2
+  materials:
+    - name: Red Goo
+      quantity: 10
+    - name: Green Goo
+      quantity: 10
+    - name: Blue Goo
+      quantity: 10

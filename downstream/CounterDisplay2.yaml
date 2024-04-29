@@ -1,16 +1,15 @@
-
 ---
 kind: BuildingKind
 spec:
-    name: Counter2New
-    description: "This building increments an on-chain counter and drives the counter displays"
-    category: display
-    model: default
-    color: 1
-    materials:
-        - name: Green Goo
-          quantity: 10
-        - name: Blue Goo
-          quantity: 10
-        - name: Red Goo
-          quantity: 10
+  name: TeamBCounterDisplay
+  description: "This building displays the current count of Team B's turf"
+  category: display
+  model: default
+  color: 1
+  materials:
+    - name: Green Goo
+      quantity: 10
+    - name: Blue Goo
+      quantity: 10
+    - name: Red Goo
+      quantity: 10

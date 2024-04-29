@@ -1,546 +1,577 @@
-
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -2, 0, 2 ]
+  location: [-2, 0, 2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -3, 1, 2 ]
+  location: [-3, 1, 2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -3, 0, 3 ]
+  location: [-3, 0, 3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -1, 0, 1 ]
+  location: [-1, 0, 1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -2, 1, 1 ]
+  location: [-2, 1, 1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -1, -1, 2 ]
+  location: [-1, -1, 2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -2, -1, 3 ]
+  location: [-2, -1, 3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -3, -1, 4 ]
+  location: [-3, -1, 4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -4, 0, 4 ]
+  location: [-4, 0, 4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -4, 1, 3 ]
+  location: [-4, 1, 3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -3, 2, 1 ]
+  location: [-3, 2, 1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -4, 2, 2 ]
+  location: [-4, 2, 2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -2, 2, 0 ]
+  location: [-2, 2, 0]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -1, 1, 0 ]
+  location: [-1, 1, 0]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 0, 0, 0 ]
+  location: [0, 0, 0]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 1, -1, 0 ]
+  location: [1, -1, 0]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 0, -1, 1 ]
+  location: [0, -1, 1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 0, -2, 2 ]
+  location: [0, -2, 2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 0, 1, -1 ]
+  location: [0, 1, -1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -1, 2, -1 ]
+  location: [-1, 2, -1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 0, 2, -2 ]
+  location: [0, 2, -2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 1, 2, -3 ]
+  location: [1, 2, -3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 2, 2, -4 ]
+  location: [2, 2, -4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 3, 1, -4 ]
+  location: [3, 1, -4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 4, 1, -5 ]
+  location: [4, 1, -5]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 4, 0, -4 ]
+  location: [4, 0, -4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 5, -1, -4 ]
+  location: [5, -1, -4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 5, -2, -3 ]
+  location: [5, -2, -3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 4, -2, -2 ]
+  location: [4, -2, -2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 4, -3, -1 ]
+  location: [4, -3, -1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 4, -4, 0 ]
+  location: [4, -4, 0]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 3, -4, 1 ]
+  location: [3, -4, 1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 2, -4, 2 ]
+  location: [2, -4, 2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 1, -3, 2 ]
+  location: [1, -3, 2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 0, -3, 3 ]
+  location: [0, -3, 3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -1, -3, 4 ]
+  location: [-1, -3, 4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -2, -2, 4 ]
+  location: [-2, -2, 4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 1, -4, 3 ]
+  location: [1, -4, 3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 0, -4, 4 ]
+  location: [0, -4, 4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -1, -2, 3 ]
+  location: [-1, -2, 3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 2, -3, 1 ]
+  location: [2, -3, 1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 3, -3, 0 ]
+  location: [3, -3, 0]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 1, -2, 1 ]
+  location: [1, -2, 1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 2, -2, 0 ]
+  location: [2, -2, 0]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 3, -2, -1 ]
+  location: [3, -2, -1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 2, -1, -1 ]
+  location: [2, -1, -1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 1, 0, -1 ]
+  location: [1, 0, -1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 1, 1, -2 ]
+  location: [1, 1, -2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 2, 0, -2 ]
+  location: [2, 0, -2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 2, 1, -3 ]
+  location: [2, 1, -3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 0, 3, -3 ]
+  location: [0, 3, -3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 1, 3, -4 ]
+  location: [1, 3, -4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 0, 4, -4 ]
+  location: [0, 4, -4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -1, 4, -3 ]
+  location: [-1, 4, -3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -2, 4, -2 ]
+  location: [-2, 4, -2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -2, 3, -1 ]
+  location: [-2, 3, -1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -3, 4, -1 ]
+  location: [-3, 4, -1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -3, 5, -2 ]
+  location: [-3, 5, -2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -4, 3, 1 ]
+  location: [-4, 3, 1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -4, 4, 0 ]
+  location: [-4, 4, 0]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -4, 5, -1 ]
+  location: [-4, 5, -1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -5, 3, 2 ]
+  location: [-5, 3, 2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -5, 4, 1 ]
+  location: [-5, 4, 1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -5, 5, 0 ]
+  location: [-5, 5, 0]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -5, 2, 3 ]
+  location: [-5, 2, 3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -5, 1, 4 ]
+  location: [-5, 1, 4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -4, -1, 5 ]
+  location: [-4, -1, 5]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -5, 0, 5 ]
+  location: [-5, 0, 5]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -1, -4, 5 ]
+  location: [-1, -4, 5]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 2, -5, 3 ]
+  location: [2, -5, 3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 3, -5, 2 ]
+  location: [3, -5, 2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 4, -5, 1 ]
+  location: [4, -5, 1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 5, -5, 0 ]
+  location: [5, -5, 0]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 1, -5, 4 ]
+  location: [1, -5, 4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 0, -5, 5 ]
+  location: [0, -5, 5]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -3, -2, 5 ]
+  location: [-3, -2, 5]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -2, -3, 5 ]
+  location: [-2, -3, 5]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -1, 3, -2 ]
+  location: [-1, 3, -2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -3, 3, 0 ]
+  location: [-3, 3, 0]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -2, 5, -3 ]
+  location: [-2, 5, -3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -1, 5, -4 ]
+  location: [-1, 5, -4]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 0, 5, -5 ]
+  location: [0, 5, -5]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 1, 4, -5 ]
+  location: [1, 4, -5]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 3, 0, -3 ]
+  location: [3, 0, -3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 3, -1, -2 ]
+  location: [3, -1, -2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 3, 2, -5 ]
+  location: [3, 2, -5]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 4, -1, -3 ]
+  location: [4, -1, -3]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 5, -3, -2 ]
+  location: [5, -3, -2]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 5, -4, -1 ]
+  location: [5, -4, -1]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 5, 0, -5 ]
+  location: [5, 0, -5]
 
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ 2, 3, -5 ]
+  location: [2, 3, -5]
+
+---
+kind: Building
+spec:
+  name: Turf Wars HQ
+  location: [0, 0, 0]
+  facingDirection: RIGHT
+
+---
+kind: Building
+spec:
+  name: TeamACounterDisplay
+  location: [-5, 0, 5]
+
+---
+kind: Building
+spec:
+  name: TeamBCounterDisplay
+  location: [5, 0, -5]
+  facingDirection: LEFT
+
+---
+kind: Building
+spec:
+  name: StartA
+  location: [0, -5, 5]
+
+---
+kind: Building
+spec:
+  name: StartB
+  location: [0, 5, -5]

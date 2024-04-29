@@ -19,7 +19,7 @@ export default async function update(state, block) {
 
   const {
     prizePool,
-    gameActive,
+    gameState,
     startBlock,
     endBlock,
     teamALength,
@@ -30,11 +30,11 @@ export default async function update(state, block) {
     teamBPlayers,
   } = getTurfWarsState(state, zone);
 
-  console.log("teamATiles", teamATiles);
-  console.log("teamAPlayers", teamAPlayers);
+  // console.log("teamATiles", teamATiles);
+  // console.log("teamAPlayers", teamAPlayers);
 
-  const teamACount = teamATiles.length;
-  const teamBCount = teamBTiles.length;
+  const teamACount = teamALength;
+  const teamBCount = teamBLength;
 
   // unit plugin properties - unit color
   const unitMapObj = [];
@@ -72,8 +72,8 @@ export default async function update(state, block) {
     });
   }
 
-  mapObj.concat(getCounterMapObjs(state, "Counter1New", teamACount));
-  mapObj.concat(getCounterMapObjs(state, "Counter2New", teamBCount));
+  mapObj.concat(getCounterMapObjs(state, "TeamACounterDisplay", teamACount));
+  mapObj.concat(getCounterMapObjs(state, "TeamBCounterDisplay", teamBCount));
 
   // check current game state:
   // - NotStarted : GameActive == false
@@ -131,7 +131,7 @@ function getTurfWarsState(state, zone) {
     throw new Error("Zone not found");
   }
   const prizePool = getDataInt(zone, "prizePool");
-  const gameActive = getDataBool(zone, "gameActive");
+  const gameState = getDataInt(zone, "gameState");
   const startBlock = getDataInt(zone, "startBlock");
   const endBlock = getDataInt(zone, "endBlock");
   const teamALength = getDataInt(zone, "teamALength");
@@ -188,7 +188,7 @@ function getTurfWarsState(state, zone) {
 
   return {
     prizePool,
-    gameActive,
+    gameState,
     startBlock,
     endBlock,
     startBlock,
