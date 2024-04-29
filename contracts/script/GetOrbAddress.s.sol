@@ -12,7 +12,7 @@ import { IERC20Mintable } from "@latticexyz/world-modules/src/modules/erc20-pupp
 import { Game } from "ds/IGame.sol";
 import { State } from "ds/IState.sol";
 import { Schema, Node, BuildingCategory } from "../src/ds/Schema.sol";
-import { IBattleBoy } from "downstream/IBattleBoy.sol";
+import { IBase } from "downstream/IBase.sol";
 
 using Schema for State;
 
@@ -29,7 +29,7 @@ contract GetOrbAddress is Script {
     Game ds = Game(vm.envAddress("DS_GAME_ADDR"));
     State state = ds.getState();
     bytes24 battleBuildingKind = Node.BuildingKind("Battle", BuildingCategory.CUSTOM);
-    IBattleBoy battleBoy = IBattleBoy(state.getImplementation(battleBuildingKind));
+    IBase battleBoy = IBase(state.getImplementation(battleBuildingKind));
     address turfWars = address(battleBoy.turfWars());
 
     IERC20Mintable token = IERC20Mintable(SkyPoolConfig.getOrbToken());

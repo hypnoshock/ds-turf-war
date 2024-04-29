@@ -10,8 +10,8 @@ import { StoreSwitch } from "@latticexyz/store/src/StoreSwitch.sol";
 import { SkyPoolConfig, MatchIndexToEntity, MatchSky } from "../src/codegen/index.sol";
 
 import { IWorld } from "../src/codegen/world/IWorld.sol";
-import { IBattleBoy } from "downstream/IBattleBoy.sol";
-import { IJudgeBuilding } from "downstream/IJudgeBuilding.sol";
+import { IBase } from "downstream/IBase.sol";
+import { IZone } from "downstream/IZone.sol";
 
 import { Game } from "../src/ds/IGame.sol";
 import { State } from "../src/ds/IState.sol";
@@ -33,6 +33,7 @@ contract InitTurfWars is Script {
                 
         Game ds = Game(vm.envAddress("DS_GAME_ADDR"));
         State state = ds.getState();
+        int16 zoneKey = int16(vm.envInt("DS_ZONE"));
 
         IWorld world = IWorld(vm.envAddress("SS_GAME_ADDR"));
         StoreSwitch.setStoreAddress(address(world));
@@ -41,40 +42,30 @@ contract InitTurfWars is Script {
         IERC20Mintable orbToken = IERC20Mintable(SkyPoolConfig.getOrbToken());
         console.log("Orb Token Address: %s", address(orbToken));
 
-        // Battle building handle
-        bytes24 battleBuildingKind = Node.BuildingKind("Battle", BuildingCategory.CUSTOM);
-        IBattleBoy battleBuilding = IBattleBoy(address(state.getImplementation(battleBuildingKind)));
-        require(address(battleBuilding) != address(0), "Battle Building not found");
-        console.log("Battle Building Address: %s", address(battleBuilding));
-
-        // Judge building handle
-        bytes24 judgeBuildingKind = Node.BuildingKind("Judge", BuildingCategory.CUSTOM);
-        IJudgeBuilding judgeBuilding = IJudgeBuilding(address(state.getImplementation(judgeBuildingKind))); 
-        require(address(judgeBuilding) != address(0), "Judge Building not found");
-        console.log("Judge Building Address: %s", address(judgeBuilding));      
+        // Base building handle
+        bytes24 baseBuildingKind = Node.BuildingKind("Base", BuildingCategory.CUSTOM);
+        IBase baseBuilding = IBase(address(state.getImplementation(baseBuildingKind)));
+        require(address(baseBuilding) != address(0), "Base Building not found");
+        console.log("Base Building Address: %s", address(baseBuilding));
 
         bytes32 firstMatchInWindow = Helper.findFirstMatchInWindow(SkyPoolConfig.getWindow());
         require (firstMatchInWindow != 0, "No match found in window");
         console.log("First Match in Window: %x", uint32(uint256(firstMatchInWindow >> 224)));
 
+        IZone zoneImpl = IZone(address(state.getImplementation(Node.Zone(zoneKey))));
+        require (address(zoneImpl) != address(0), "Zone implementation not found");
+
         // -- Downstream 
         vm.startBroadcast(dsDeployKey);
 
-        TurfWars turfWars = (new TurfWars){value: 0.05 ether}(ds, world, orbToken, battleBuilding, judgeBuilding);
+        TurfWars turfWars = (new TurfWars){value: 0.05 ether}(ds, world, orbToken, baseBuilding, zoneImpl);
         console.log("TurfWars balance: %s", address(turfWars).balance);
 
-        battleBuilding.init(
+        baseBuilding.init(
             dsDeployAddr,
-            address(judgeBuilding),
             address(world),
             address(turfWars),
             firstMatchInWindow
-        );
-
-        judgeBuilding.init(
-            dsDeployAddr,
-            address(ds),
-            battleBuilding
         );
 
         vm.stopBroadcast();

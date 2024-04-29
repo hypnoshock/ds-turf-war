@@ -42,37 +42,38 @@ contract TurfWarsZone is ZoneKind, IZone {
     }
 
     // TODO: only bases can call this
-    function setAreaWinner(Game ds, bytes24 origin, bytes24 player) public {
+    // TODO: use dynamic radius instead of a fixed 1 tile radius
+    function setAreaWinner(Game ds, bytes24 origin, bytes24 player, bool overwrite) public {
         (int16 z, int16 q, int16 r, int16 s) = getTileCoords(origin);
         bytes24 zoneID = Node.Zone(z);
         bytes24 tile;
 
         tile = Node.Tile(z, q, r, s);
-        if (!_hasTileBeenWon(ds, tile, zoneID))
+        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))
             _setTileWinner(ds, tile, player, Node.Zone(z));
 
         tile = Node.Tile(z, q + 0, r + 1, s + -1);
-        if (!_hasTileBeenWon(ds, tile, zoneID))
+        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))
             _setTileWinner(ds, tile, player, Node.Zone(z));
 
         tile = Node.Tile(z, q + 1, r + 0, s + -1);
-        if (!_hasTileBeenWon(ds, tile, zoneID))            
+        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))            
             _setTileWinner(ds, tile, player, Node.Zone(z));
 
         tile = Node.Tile(z, q + 1, r + -1, s + 0);
-        if (!_hasTileBeenWon(ds, tile, zoneID))            
+        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))            
             _setTileWinner(ds, tile, player, Node.Zone(z));
 
         tile = Node.Tile(z, q + 0, r + -1, s + 1);
-        if (!_hasTileBeenWon(ds, tile, zoneID))            
+        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))            
             _setTileWinner(ds, tile, player, Node.Zone(z));
 
         tile = Node.Tile(z, q + -1, r + 0, s + 1);
-        if (!_hasTileBeenWon(ds, tile, zoneID))            
+        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))            
             _setTileWinner(ds, tile, player, Node.Zone(z));
 
         tile = Node.Tile(z, q + -1, r + 1, s + 0);
-        if (!_hasTileBeenWon(ds, tile, zoneID))            
+        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))            
             _setTileWinner(ds, tile, player, Node.Zone(z));
     }
 

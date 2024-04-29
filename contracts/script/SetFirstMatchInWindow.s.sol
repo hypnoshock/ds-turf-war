@@ -10,8 +10,7 @@ import { StoreSwitch } from "@latticexyz/store/src/StoreSwitch.sol";
 import { IWorld } from "../src/codegen/world/IWorld.sol";
 import { SkyPoolConfig, MatchIndexToEntity, MatchSky } from "../src/codegen/index.sol";
 
-import { IBattleBoy } from "downstream/IBattleBoy.sol";
-import { IJudgeBuilding } from "downstream/IJudgeBuilding.sol";
+import { IBase } from "downstream/IBase.sol";
 
 import { Game } from "../src/ds/IGame.sol";
 import { State } from "../src/ds/IState.sol";
@@ -37,7 +36,7 @@ contract SetFirstMatchInWindow is Script {
 
         // Battle building handle
         bytes24 battleBuildingKind = Node.BuildingKind("Battle", BuildingCategory.CUSTOM);
-        IBattleBoy battleBuilding = IBattleBoy(address(state.getImplementation(battleBuildingKind)));
+        IBase battleBuilding = IBase(address(state.getImplementation(battleBuildingKind)));
         require(address(battleBuilding) != address(0), "Battle Building not found");
         console.log("Battle Building Address: %s", address(battleBuilding));   
 

@@ -7,3 +7,4 @@ forge-std/=lib/forge-std/src/
 base/=src/
 downstream/=../downstream/
 ds/=src/ds/
+cog/=src/ds/

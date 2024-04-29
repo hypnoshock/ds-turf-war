@@ -7,15 +7,15 @@ import {Schema, Node, CompoundKeyDecoder} from "@ds/schema/Schema.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {BuildingKind} from "@ds/ext/BuildingKind.sol";
 import {IWorld} from "./IWorld.sol";
-import {IJudgeBuilding} from "./IJudgeBuilding.sol";
 import {LibString} from "./LibString.sol";
 import {LibUtils} from "./LibUtils.sol";
 import {ITurfWars} from "./ITurfWars.sol";
 import {IZone} from "./IZone.sol";
+import {IBase} from "./IBase.sol";
 
 using Schema for State;
 
-contract Base is BuildingKind {
+contract Base is BuildingKind, IBase {
     bytes32 constant LEVEL_FOUR_PLAYER = 0x4361756c64726f6e2d3200000000000000000000000000000000000000000000;
     bytes32 constant LEVEL_KNIFE_FIGHT = 0x4b6e6966655f46696768745f3200000000000000000000000000000000000000;
     bytes32 constant LEVEL_ISLE = 0x5468652049736c65000000000000000000000000000000000000000000000000;
@@ -33,7 +33,7 @@ contract Base is BuildingKind {
     ITurfWars public turfWars;
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "BattleBoy: Only owner can call this function");
+        require(msg.sender == owner, "Base: Only owner can call this function");
         _;
     }
 
@@ -54,7 +54,7 @@ contract Base is BuildingKind {
         bytes32 _firstMatchInWindow
     ) public {
         if (owner != address(0) && msg.sender != owner) {
-            revert("BattleBoy: Only owner can reinitialize");
+            revert("Base: Only owner can reinitialize");
         }
         owner = _owner;
         world = IWorld(_skyStrifeWorld);
@@ -64,13 +64,13 @@ contract Base is BuildingKind {
 
     // -- Hooks
 
-    function construct(Game ds, bytes24 buildingInstanceID, bytes24 mobileUnitID, bytes memory payload) public override {
+    function construct(Game ds, bytes24 /*buildingInstanceID*/, bytes24 mobileUnitID, bytes memory payload) public override {
         State state = ds.getState();
         int16[4] memory coords = abi.decode(payload, (int16[4]));
         bytes24 zone = Node.Zone(coords[0]);
         IZone zoneImpl = IZone(state.getImplementation(zone));
         require (address(zoneImpl) != address(0), "Base::construct - No implementation for zone");
-        zoneImpl.setAreaWinner(ds, Node.Tile(coords[0], coords[1], coords[2], coords[3]), state.getOwner(mobileUnitID));
+        zoneImpl.setAreaWinner(ds, Node.Tile(coords[0], coords[1], coords[2], coords[3]), state.getOwner(mobileUnitID), false);
     }
 
     // -- Sky Strife Battles
@@ -104,14 +104,14 @@ contract Base is BuildingKind {
             LibString.toCrunkString(uint256(uint16(s)), 2),
             LibString.toString(uint256(count))));
 
-        bytes32 entityID = _getEntityID(buildingInstance);
+        bytes32 matchID = _getMatchID(buildingInstance);
 
-        require(address(turfWars) != address(0), "BattleBoy: TurfWars not set");
-        turfWars.startBattle(name, firstMatchInWindow, entityID, SELECTED_LEVEL);
+        require(address(turfWars) != address(0), "Base: TurfWars not set");
+        turfWars.startBattle(name, firstMatchInWindow, matchID, SELECTED_LEVEL);
 
         string memory tileMatchKey = LibUtils.getTileMatchKey(tile);
         ds.getDispatcher().dispatch(
-            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, tileMatchKey, entityID))
+            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, tileMatchKey, matchID))
         );
     }
 
@@ -121,20 +121,24 @@ contract Base is BuildingKind {
         bytes24 tile = state.getFixedLocation(buildingInstance);
         bytes24 zone = Node.Zone(getTileZone(tile));
         string memory tileMatchKey = LibUtils.getTileMatchKey(tile);
-        bytes32 entityID = state.getData(buildingInstance, tileMatchKey);
+        bytes32 matchID = state.getData(buildingInstance, tileMatchKey);
         
-        require(entityID != 0, "No match to claim win for");
+        require(matchID != 0, "No match to claim win for");
 
         bytes24 player = state.getOwner(actor);
         address playerAddress = state.getOwnerAddress(player);
 
-        require(turfWars.isAddressWinner(playerAddress, entityID), "Player is not the winner");
+        require(turfWars.isAddressWinner(playerAddress, matchID), "Player is not the winner");
+
+        ds.getDispatcher().dispatch(
+            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, tileMatchKey, bytes32(0)))
+        );
 
         IZone zoneImpl = IZone(state.getImplementation(zone));
-        zoneImpl.setAreaWinner(ds, tile, player);
+        zoneImpl.setAreaWinner(ds, tile, player, true);
     }
 
-    function _getEntityID(bytes24 buildingInstance) view internal returns (bytes32) {
+    function _getMatchID(bytes24 buildingInstance) view internal returns (bytes32) {
         return bytes32((uint256(keccak256(abi.encodePacked(buildingInstance, block.timestamp))) & 0xFFFFFFFF) << 224);
     }
 

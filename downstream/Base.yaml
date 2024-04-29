@@ -8,6 +8,8 @@ spec:
   color: 5
   contract:
     file: ./Base.sol
+  plugin:
+    file: ./Base.js
   materials:
     - name: Red Goo
       quantity: 10

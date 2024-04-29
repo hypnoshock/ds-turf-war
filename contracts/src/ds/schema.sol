@@ -72,6 +72,11 @@ library Node {
             Kind.BuildingKind.selector, bytes20(abi.encodePacked(uint32(0), id, uint64(category)))
         );
     }
+
+    function Zone(int16 id) internal pure returns (bytes24) {
+        require(id >= 0, "InvalidZoneID");
+        return CompoundKeyEncoder.UINT64(Kind.Zone.selector, uint16(id));
+    }
 }
 
 library Schema {
