@@ -1,0 +1,10 @@
+---
+kind: ZoneKind
+spec:
+  name: Turf Wars
+  description: A team base game where players must capture as much of the map as possible. Battles are played out in Sky Strife.
+  url: images/building-totems/Block_Van.png
+  contract:
+    file: ./Zone.sol
+  plugin:
+    file: ./Zone.js
