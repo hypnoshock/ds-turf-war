@@ -4,7 +4,7 @@ spec:
   name: StartA
   description: "Starting point for Team A"
   category: custom
-  model: 00-00
+  model: 03-07
   color: 2
   plugin:
     file: ./StartBuilding.js

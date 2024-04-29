@@ -8,11 +8,12 @@ import {Schema, CombatWinState, Node} from "@ds/schema/Schema.sol";
 import {ZoneKind} from "@ds/ext/ZoneKind.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {LibUtils} from "./LibUtils.sol";
+import {IZone} from "./IZone.sol";
 import "@ds/utils/LibString.sol";
 
 using Schema for State;
 
-contract TurfWars is ZoneKind {
+contract TurfWarsZone is ZoneKind, IZone {
     function join() external {}
     function setReady() external {}
     function unsetReady() external {}
@@ -38,6 +39,41 @@ contract TurfWars is ZoneKind {
         } else if ((bytes4)(payload) == this.unsetReady.selector) {
             _unsetReady(ds, state, mobileUnitID, zoneID);
         } 
+    }
+
+    // TODO: only bases can call this
+    function setAreaWinner(Game ds, bytes24 origin, bytes24 player) public {
+        (int16 z, int16 q, int16 r, int16 s) = getTileCoords(origin);
+        bytes24 zoneID = Node.Zone(z);
+        bytes24 tile;
+
+        tile = Node.Tile(z, q, r, s);
+        if (!_hasTileBeenWon(ds, tile, zoneID))
+            _setTileWinner(ds, tile, player, Node.Zone(z));
+
+        tile = Node.Tile(z, q + 0, r + 1, s + -1);
+        if (!_hasTileBeenWon(ds, tile, zoneID))
+            _setTileWinner(ds, tile, player, Node.Zone(z));
+
+        tile = Node.Tile(z, q + 1, r + 0, s + -1);
+        if (!_hasTileBeenWon(ds, tile, zoneID))            
+            _setTileWinner(ds, tile, player, Node.Zone(z));
+
+        tile = Node.Tile(z, q + 1, r + -1, s + 0);
+        if (!_hasTileBeenWon(ds, tile, zoneID))            
+            _setTileWinner(ds, tile, player, Node.Zone(z));
+
+        tile = Node.Tile(z, q + 0, r + -1, s + 1);
+        if (!_hasTileBeenWon(ds, tile, zoneID))            
+            _setTileWinner(ds, tile, player, Node.Zone(z));
+
+        tile = Node.Tile(z, q + -1, r + 0, s + 1);
+        if (!_hasTileBeenWon(ds, tile, zoneID))            
+            _setTileWinner(ds, tile, player, Node.Zone(z));
+
+        tile = Node.Tile(z, q + -1, r + 1, s + 0);
+        if (!_hasTileBeenWon(ds, tile, zoneID))            
+            _setTileWinner(ds, tile, player, Node.Zone(z));
     }
 
     function _setReady(Game ds, State state, bytes24 mobileUnitID, bytes24 zoneID) private {

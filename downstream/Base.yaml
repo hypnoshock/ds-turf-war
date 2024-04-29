@@ -1,13 +1,13 @@
 ---
 kind: BuildingKind
 spec:
-  name: StartB
-  description: "Starting point for Team B"
   category: custom
-  model: 03-07
-  color: 4
-  plugin:
-    file: ./StartBuilding.js
+  name: Base
+  description: Puts a base on the map to conquer an area
+  model: 99-99
+  color: 5
+  contract:
+    file: ./Base.sol
   materials:
     - name: Red Goo
       quantity: 10
