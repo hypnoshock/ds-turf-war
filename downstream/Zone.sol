@@ -14,9 +14,18 @@ using Schema for State;
 
 contract TurfWars is ZoneKind {
     function join() external {}
-    function start() external {}
-    function claim() external {}
-    function reset() external {}
+    function setReady() external {}
+    function unsetReady() external {}
+    // function claim() external {}
+    // function reset() external {}
+    
+    enum Team {NONE, A, B}
+    string constant TEAM_A = "teamA";
+    string constant TEAM_B = "teamB";
+
+    // Data keys
+    string constant DATA_GAME_STATE = "gameState";
+    string constant DATA_READY = "ready";
 
     enum GAME_STATE {NOT_STARTED, IN_PROGRESS, FINISHED}
 
@@ -24,16 +33,70 @@ contract TurfWars is ZoneKind {
         State state = ds.getState();
         if ((bytes4)(payload) == this.join.selector) {
             _join(ds, state, mobileUnitID, zoneID);
+        } else if ((bytes4)(payload) == this.setReady.selector) {
+            _setReady(ds, state, mobileUnitID, zoneID);
+        } else if ((bytes4)(payload) == this.unsetReady.selector) {
+            _unsetReady(ds, state, mobileUnitID, zoneID);
         } 
+    }
+
+    function _setReady(Game ds, State state, bytes24 mobileUnitID, bytes24 zoneID) private {
+        // Check if game is already in progress
+        if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) != GAME_STATE.NOT_STARTED) {
+            revert("Game already in progress");
+        }
+        
+        // TODO: Check if caller is the owner of the unit
+        // if (state.getOwner(mobileUnitID) != Node.Player(msg.sender)) {
+        //     revert("Not owner of unit");
+        // }
+        
+        // Get unit team
+        Team team = _getUnitTeam(state, zoneID, mobileUnitID);
+        if (team == Team.NONE) {
+            revert("Unit not in team");
+        }
+
+        // Check if other team is ready
+        if (Team(uint256(state.getData(zoneID, DATA_READY))) == (team == Team.A ? Team.B : Team.A)) {
+            // Other team ready, start game
+            _setDataOnZone(ds.getDispatcher(), zoneID, DATA_GAME_STATE, bytes32(uint256(GAME_STATE.IN_PROGRESS)));
+        } else {
+            // Set team as ready
+            _setDataOnZone(ds.getDispatcher(), zoneID, DATA_READY, bytes32(uint256(team)));
+        }
+    }
+
+    function _unsetReady(Game ds, State state, bytes24 mobileUnitID, bytes24 zoneID) private {
+        // Check if game is already in progress
+        if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) != GAME_STATE.NOT_STARTED) {
+            revert("Game already in progress");
+        }
+        
+        // TODO: Check if caller is the owner of the unit
+        // if (state.getOwner(mobileUnitID) != Node.Player(msg.sender)) {
+        //     revert("Not owner of unit");
+        // }
+        
+        // Get unit team
+        Team team = _getUnitTeam(state, zoneID, mobileUnitID);
+        if (team == Team.NONE) {
+            revert("Unit not in team");
+        }
+
+        // Check that the team was set to ready
+        require (Team(uint256(state.getData(zoneID, DATA_READY))) == team, "Team not ready");
+
+        _setDataOnZone(ds.getDispatcher(), zoneID, DATA_READY, bytes32(uint256(Team.NONE)));
     }
 
     function _join(Game ds, State state, bytes24 unitID, bytes24 zoneID) private {
         // check game not in progress
-        if (GAME_STATE(uint256(state.getData(zoneID, "gameState"))) != GAME_STATE.NOT_STARTED) revert("Cannot join game in progress");
+        if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) != GAME_STATE.NOT_STARTED) revert("Cannot join game in progress");
 
         // Check if unit has already joined
         if (
-            _isUnitInTeam(state, zoneID, "teamA", unitID) || _isUnitInTeam(state, zoneID, "teamB", unitID)
+            _isUnitInTeam(state, zoneID, TEAM_A, unitID) || _isUnitInTeam(state, zoneID, TEAM_B, unitID)
         ) {
             revert("Already joined");
         }
@@ -44,7 +107,7 @@ contract TurfWars is ZoneKind {
         // assign a team
         _assignUnitToTeam(
             ds,
-            (teamALength <= teamBLength) ? "teamA" : "teamB",
+            (teamALength <= teamBLength) ? TEAM_A : TEAM_B,
             (teamALength <= teamBLength) ? teamALength : teamBLength,
             unitID,
             zoneID
@@ -56,10 +119,10 @@ contract TurfWars is ZoneKind {
     {
         Dispatcher dispatcher = ds.getDispatcher();
         // TODO: Do we need to keccak this?
-        if (keccak256(abi.encodePacked(team)) == keccak256(abi.encodePacked("teamA"))) {
-            _processTeam(dispatcher, zoneID, "teamA", teamLength, unitID);
-        } else if (keccak256(abi.encodePacked(team)) == keccak256(abi.encodePacked("teamB"))) {
-            _processTeam(dispatcher, zoneID, "teamB", teamLength, unitID);
+        if (keccak256(abi.encodePacked(team)) == keccak256(abi.encodePacked(TEAM_A))) {
+            _processTeam(dispatcher, zoneID, TEAM_A, teamLength, unitID);
+        } else if (keccak256(abi.encodePacked(team)) == keccak256(abi.encodePacked(TEAM_B))) {
+            _processTeam(dispatcher, zoneID, TEAM_B, teamLength, unitID);
         }
     }
 
@@ -95,6 +158,15 @@ contract TurfWars is ZoneKind {
         return false;
     }
 
+    function _getUnitTeam(State state, bytes24 zoneID, bytes24 unitId) private view returns (Team) {
+        if (_isUnitInTeam(state, zoneID, TEAM_A, unitId)) {
+            return Team.A;
+        } else if (_isUnitInTeam(state, zoneID, TEAM_B, unitId)) {
+            return Team.B;
+        }
+        return Team.NONE;
+    }
+
     function getTileCoords(bytes24 tile) internal pure returns (int16, int16, int16, int16) {
         int16[4] memory keys = CompoundKeyDecoder.INT16_ARRAY(tile);
         return (keys[0], keys[1], keys[2], keys[3]);
@@ -112,19 +184,19 @@ contract TurfWars is ZoneKind {
         // Check game has started and check that the player is in the game
         if (mobileUnitTile != Node.Tile(z, 0, 0, 0)) {
             // Don't allow players to move before game has started
-            if (GAME_STATE(uint256(state.getData(zoneID, "gameState"))) == GAME_STATE.NOT_STARTED) {
+            if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) == GAME_STATE.NOT_STARTED) {
                 // Allow players to move to the starting tile
                 // TODO: Make these positions configurable / dynamic
-                if (_isUnitInTeam(state, zoneID, "teamA", mobileUnitID) && mobileUnitTile == Node.Tile(z, 0, -5, 5)) {
+                if (_isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID) && mobileUnitTile == Node.Tile(z, 0, -5, 5)) {
                     return;
-                } else if (_isUnitInTeam(state, zoneID, "teamB", mobileUnitID) && mobileUnitTile == Node.Tile(z, 0, 5, -5)) {
+                } else if (_isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID) && mobileUnitTile == Node.Tile(z, 0, 5, -5)) {
                     return;
                 } 
                 revert("Unit cannot move, Game not started");
             }
 
-            if (GAME_STATE(uint256(state.getData(zoneID, "gameState"))) == GAME_STATE.IN_PROGRESS) {
-                if (!_isUnitInTeam(state, zoneID, "teamA", mobileUnitID) && !_isUnitInTeam(state, zoneID, "teamB", mobileUnitID)) {
+            if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) == GAME_STATE.IN_PROGRESS) {
+                if (!_isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID) && !_isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID)) {
                     revert("Unit not in game");
                 }
             }

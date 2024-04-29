@@ -8,7 +8,7 @@ spec:
   color: 5
   plugin:
     file: ./TurfWarsHQ.js
-    alwaysActive: true
+    alwaysActive: false
   materials:
     - name: Red Goo
       quantity: 10

@@ -33,8 +33,8 @@ export default async function update(state, block) {
   // console.log("teamATiles", teamATiles);
   // console.log("teamAPlayers", teamAPlayers);
 
-  const teamACount = teamALength;
-  const teamBCount = teamBLength;
+  const teamAScore = teamATiles.length;
+  const teamBScore = teamBTiles.length;
 
   // unit plugin properties - unit color
   const unitMapObj = [];
@@ -72,8 +72,8 @@ export default async function update(state, block) {
     });
   }
 
-  mapObj.concat(getCounterMapObjs(state, "TeamACounterDisplay", teamACount));
-  mapObj.concat(getCounterMapObjs(state, "TeamBCounterDisplay", teamBCount));
+  mapObj.push(getCounterMapObj(state, "TeamACounterDisplay", teamAScore));
+  mapObj.push(getCounterMapObj(state, "TeamBCounterDisplay", teamBScore));
 
   // check current game state:
   // - NotStarted : GameActive == false
@@ -201,21 +201,21 @@ function getTurfWarsState(state, zone) {
   };
 }
 
-function getCounterMapObjs(state, counterBuildingName, count) {
+function getCounterMapObj(state, counterBuildingName, count) {
   const counterBuilding = state.world?.buildings.find(
     (b) => b.kind?.name?.value == counterBuildingName
   );
 
-  return counterBuilding
-    ? [
-        {
-          type: "building",
-          id: `${counterBuilding.id}`,
-          key: "labelText",
-          value: `${count}`,
-        },
-      ]
-    : [];
+  if (counterBuilding) {
+    return {
+      type: "building",
+      id: `${counterBuilding.id}`,
+      key: "labelText",
+      value: `${count}`,
+    };
+  } else {
+    return {};
+  }
 }
 
 // ---------------------------------- //
@@ -230,21 +230,6 @@ const getBuildingsByType = (buildingsArray, type) => {
 
 function getTeamUnitAtIndex(zone, team, index) {
   return getDataBytes24(zone, `${team}Unit_${index}`);
-}
-
-// search the buildings list ofr the display buildings we're gpoing to use
-// for team counts and coutdown
-function connectDisplayBuildings(state, buildings) {
-  if (!teamBCounter) {
-    teamBCounter = buildings.find((element) =>
-      getBuildingKindsByTileLocation(state, element, teamBCounterKindId)
-    );
-  }
-  if (!teamACounter) {
-    teamACounter = buildings.find((element) =>
-      getBuildingKindsByTileLocation(state, element, teamACounterKindId)
-    );
-  }
 }
 
 function formatTime(timeInMs) {

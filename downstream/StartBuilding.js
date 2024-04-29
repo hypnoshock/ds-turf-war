@@ -1,7 +1,6 @@
 import ds from "downstream";
 
 export default async function update(state) {
-  const buildings = state.world?.buildings || [];
   const mobileUnit = getMobileUnit(state);
 
   // Early out if no mobile unit
@@ -10,13 +9,13 @@ export default async function update(state) {
       version: 1,
       components: [
         {
-          id: "turf-wars-hq",
+          id: "turf-wars-start",
           type: "building",
           content: [
             {
               id: "default",
               type: "inline",
-              html: `<p>Select your mobile unit to join a team</p>`,
+              html: `<h3>Turf Wars HQ</h3><p>Select your mobile unit to interact with this building</p>`,
             },
           ],
         },
@@ -24,8 +23,10 @@ export default async function update(state) {
     };
   }
 
-  const { teamAPlayers, teamBPlayers } = getTurfWarsState(state, state.world);
-
+  const { teamAPlayers, teamBPlayers, gameState } = getTurfWarsState(
+    state,
+    state.world
+  );
   const isPlayerTeamA = teamAPlayers.some(
     (playerNodeId) =>
       mobileUnit?.owner.id.toLowerCase() == playerNodeId.toLowerCase()
@@ -35,85 +36,68 @@ export default async function update(state) {
       mobileUnit?.owner.id.toLowerCase() == playerNodeId.toLowerCase()
   );
 
-  const joinTeam = () => {
-    if (!mobileUnit) {
-      console.log("no selected unit");
-      return;
-    }
+  const readyTeam = getDataInt(state.world, "ready");
 
-    let startLocation = [];
-    if (teamAPlayers.length <= teamBPlayers.length) {
-      // Team A
-      console.log("Joining Team A");
-      startLocation = [0, -5, 5];
-    } else {
-      // Team B
-      console.log("Joining Team B");
-      startLocation = [0, 5, -5];
-    }
-
-    ds.dispatch(
-      {
-        name: "ZONE_USE",
-        args: [mobileUnit.id, ds.encodeCall("function join()", [])],
-      },
-      {
-        name: "MOVE_MOBILE_UNIT",
-        args: [mobileUnit.nextLocation.tile.coords[0], ...startLocation],
-      }
-    );
+  const setReady = () => {
+    ds.dispatch({
+      name: "ZONE_USE",
+      args: [mobileUnit.id, ds.encodeCall("function setReady()", [])],
+    });
   };
 
-  const moveToStartTile = () => {
-    if (!mobileUnit) {
-      console.log("no selected unit");
-      return;
-    }
-
-    if (isPlayerTeamA) {
-      ds.dispatch({
-        name: "MOVE_MOBILE_UNIT",
-        args: [mobileUnit.nextLocation.tile.coords[0], 0, -5, 5],
-      });
-    } else {
-      ds.dispatch({
-        name: "MOVE_MOBILE_UNIT",
-        args: [mobileUnit.nextLocation.tile.coords[0], 0, 5, -5],
-      });
-    }
+  const unsetReady = () => {
+    ds.dispatch({
+      name: "ZONE_USE",
+      args: [mobileUnit.id, ds.encodeCall("function unsetReady()", [])],
+    });
   };
 
-  // UI Buttons
+  let html = "";
   const buttons = [];
 
-  if (!isPlayerTeamA && !isPlayerTeamB) {
-    buttons.push({
-      text: "Join Team",
-      type: "action",
-      action: joinTeam,
-      disabled: !!!mobileUnit,
-    });
-  } else {
-    buttons.push({
-      text: "Move to Start Tile",
-      type: "action",
-      action: moveToStartTile,
-      disabled: !!!mobileUnit,
-    });
+  // Game not started
+  switch (gameState) {
+    case 0: {
+      if (
+        (isPlayerTeamA && readyTeam == 1) ||
+        (isPlayerTeamB && readyTeam == 2)
+      ) {
+        html = `<p>Waiting for other team to ready up</p>`;
+        buttons.push({
+          text: "Not Ready",
+          type: "action",
+          action: unsetReady,
+          disabled: false,
+        });
+      } else {
+        html = `<p>Click ready when your team is ready</p>`;
+        buttons.push({
+          text: "Ready",
+          type: "action",
+          action: setReady,
+          disabled: false,
+        });
+      }
+      break;
+    }
+    case 1: {
+      html = `<p>Game in progress</p>`;
+    }
   }
 
   return {
     version: 1,
     components: [
       {
-        id: "turf-wars-hq",
+        id: "turf-wars-start",
         type: "building",
         content: [
           {
             id: "default",
             type: "inline",
-            html: `<h2>Turf Wars HQ</h2>`,
-            buttons,
+            html,
+
+            buttons: buttons,
           },
         ],
       },
@@ -121,11 +105,12 @@ export default async function update(state) {
   };
 }
 
+// ---- turf wars helper functions ----
+
 function getTurfWarsState(state, zone) {
   if (!zone) {
     throw new Error("Zone not found");
   }
-  const prizePool = getDataInt(zone, "prizePool");
   const gameState = getDataInt(zone, "gameState");
   const startBlock = getDataInt(zone, "startBlock");
   const endBlock = getDataInt(zone, "endBlock");
@@ -158,51 +143,23 @@ function getTurfWarsState(state, zone) {
     }
   }
 
-  const teamATiles = [];
-  const teamBTiles = [];
-  zone.allData.forEach((data) => {
-    if (data.name.includes("_winner")) {
-      const tileId = data.name.split("_")[0];
-      if (
-        !!teamAPlayers.some(
-          (playerAddr) =>
-            playerAddr.toLowerCase() == data.value.slice(0, 50).toLowerCase()
-        )
-      ) {
-        teamATiles.push(tileId);
-      } else if (
-        !!teamBPlayers.some(
-          (playerAddr) =>
-            playerAddr.toLowerCase() == data.value.slice(0, 50).toLowerCase()
-        )
-      ) {
-        teamBTiles.push(tileId);
-      }
-    }
-  });
-
   return {
-    prizePool,
     gameState,
     startBlock,
     endBlock,
     startBlock,
     teamALength,
     teamBLength,
-    teamATiles,
-    teamBTiles,
     teamAPlayers,
     teamBPlayers,
   };
 }
 
-// ---- Turf Wars Helper Functions ----
-
 function getTeamUnitAtIndex(zone, team, index) {
   return getDataBytes24(zone, `${team}Unit_${index}`);
 }
 
-// ---- Helper functions ----
+// ---- helper functions ----
 
 const getBuildingsByType = (buildingsArray, type) => {
   return buildingsArray.filter((building) =>
