@@ -1,5 +1,8 @@
 import ds from "downstream";
 
+const STATE_NOT_STARTED = 0;
+const STATE_IN_PROGRESS = 1;
+
 export default async function update(state) {
   const mobileUnit = getMobileUnit(state);
 
@@ -55,9 +58,8 @@ export default async function update(state) {
   let html = "";
   const buttons = [];
 
-  // Game not started
   switch (gameState) {
-    case 0: {
+    case STATE_NOT_STARTED: {
       if (
         (isPlayerTeamA && readyTeam == 1) ||
         (isPlayerTeamB && readyTeam == 2)
@@ -80,7 +82,7 @@ export default async function update(state) {
       }
       break;
     }
-    case 1: {
+    case STATE_IN_PROGRESS: {
       html = `<p>Game in progress</p>`;
     }
   }

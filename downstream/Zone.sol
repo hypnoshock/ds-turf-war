@@ -17,8 +17,8 @@ contract TurfWarsZone is ZoneKind, IZone {
     function join() external {}
     function setReady() external {}
     function unsetReady() external {}
+    function reset(bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings) external {}
     // function claim() external {}
-    // function reset() external {}
     
     enum Team {NONE, A, B}
     string constant TEAM_A = "teamA";
@@ -38,7 +38,12 @@ contract TurfWarsZone is ZoneKind, IZone {
             _setReady(ds, state, mobileUnitID, zoneID);
         } else if ((bytes4)(payload) == this.unsetReady.selector) {
             _unsetReady(ds, state, mobileUnitID, zoneID);
-        } 
+        } else if ((bytes4)(payload) == this.reset.selector) {
+            (bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings) = abi.decode(payload[4:], (bytes24[], bytes24[]));
+            _reset(ds, state, zoneID, dirtyTiles, baseBuildings);
+        } else {
+            revert("TurfWarsZone: Invalid function signature");
+        }
     }
 
     // TODO: only bases can call this
@@ -204,9 +209,43 @@ contract TurfWarsZone is ZoneKind, IZone {
         return Team.NONE;
     }
 
-    function getTileCoords(bytes24 tile) internal pure returns (int16, int16, int16, int16) {
+    function getTileCoords(bytes24 tile) internal pure returns (int16 z, int16 q, int16 r, int16 s) {
         int16[4] memory keys = CompoundKeyDecoder.INT16_ARRAY(tile);
         return (keys[0], keys[1], keys[2], keys[3]);
+    }
+
+    // TODO: Only a player or owner can call this
+    // TODO: check zone IDs in dirtyTiles belong to the zone
+    function _reset(Game ds, State state, bytes24 zoneID, bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings) internal {
+        Dispatcher dispatcher = ds.getDispatcher();
+
+        // Reset winner on each tile
+        for (uint256 i = 0; i < dirtyTiles.length; i++) {
+            bytes24 tile = dirtyTiles[i];
+            (int16 tileZoneKey,,,) = getTileCoords(tile);
+            bytes24 tileZone = Node.Zone(tileZoneKey);
+            require (tileZone == zoneID, "Tile not in zone");
+            if (_hasTileBeenWon(ds, tile, tileZone)) {
+                _setTileWinner(ds, tile, bytes24(0), tileZone);
+            }
+        }
+
+        // Destroy all base buildings
+        for (uint256 i = 0; i < baseBuildings.length; i++) {
+            bytes24 buildingTile = state.getFixedLocation(baseBuildings[i]);
+            (int16 z, int16 q, int16 r, int16 s) = getTileCoords(buildingTile);
+            require(Node.Zone(z) == zoneID, "Base building not in zone");
+            dispatcher.dispatch(abi.encodeCall(Actions.DEV_DESTROY_BUILDING, (z, q, r, s)));
+        }
+
+        _setDataOnZone(dispatcher, zoneID, DATA_GAME_STATE, bytes32(uint256(GAME_STATE.NOT_STARTED)));
+        _setDataOnZone(
+            dispatcher, zoneID, string(abi.encodePacked(TEAM_A, "Length")), bytes32(0)
+        );
+        _setDataOnZone(
+            dispatcher, zoneID, string(abi.encodePacked(TEAM_B, "Length")), bytes32(0)
+        );
+        _setDataOnZone(dispatcher, zoneID, DATA_READY, bytes32(uint256(Team.NONE)));
     }
 
     // -- Hooks
@@ -228,7 +267,17 @@ contract TurfWarsZone is ZoneKind, IZone {
                     return;
                 } else if (_isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID) && mobileUnitTile == Node.Tile(z, 0, 5, -5)) {
                     return;
-                } 
+                } else {
+                    // Units that aren't in a team but where already in the zone before the game started can move (to allow them to walk back to centre)
+                    // If they are on the centre tile they are locked to it
+                    bytes24 mobileUnitPrevTile = state.getPrevLocation(mobileUnitID);
+                    (int16 prevZ,,,) = getTileCoords(mobileUnitTile);
+                    if (prevZ == z && mobileUnitPrevTile != Node.Tile(z, 0, 0, 0)) {
+                        return;
+                    }
+                }
+
+
                 revert("Unit cannot move, Game not started");
             }
 

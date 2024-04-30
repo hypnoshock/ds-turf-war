@@ -1,5 +1,8 @@
 import ds from "downstream";
 
+const STATE_NOT_STARTED = 0;
+const STATE_IN_PROGRESS = 1;
+
 export default async function update(state) {
   const buildings = state.world?.buildings || [];
   const mobileUnit = getMobileUnit(state);
@@ -24,7 +27,8 @@ export default async function update(state) {
     };
   }
 
-  const { teamAPlayers, teamBPlayers } = getTurfWarsState(state, state.world);
+  const { teamAPlayers, teamBPlayers, teamATiles, teamBTiles, gameState } =
+    getTurfWarsState(state, state.world);
 
   const isPlayerTeamA = teamAPlayers.some(
     (playerNodeId) =>
@@ -83,23 +87,56 @@ export default async function update(state) {
     }
   };
 
-  // UI Buttons
-  const buttons = [];
+  const resetGame = () => {
+    console.log("Resetting game");
 
-  if (!isPlayerTeamA && !isPlayerTeamB) {
-    buttons.push({
-      text: "Join Team",
-      type: "action",
-      action: joinTeam,
-      disabled: !!!mobileUnit,
+    const baseBuildingIds = getBuildingsByType(buildings, "TW Base").map(
+      (b) => b.id
+    );
+
+    ds.dispatch({
+      name: "ZONE_USE",
+      args: [
+        mobileUnit.id,
+        ds.encodeCall("function reset(bytes24[], bytes24[])", [
+          [...teamATiles, ...teamBTiles],
+          baseBuildingIds,
+        ]),
+      ],
     });
-  } else {
-    buttons.push({
-      text: "Move to Start Tile",
-      type: "action",
-      action: moveToStartTile,
-      disabled: !!!mobileUnit,
-    });
+  };
+
+  const buttons = [];
+  switch (gameState) {
+    case STATE_NOT_STARTED: {
+      if (!isPlayerTeamA && !isPlayerTeamB) {
+        buttons.push({
+          text: "Join Team",
+          type: "action",
+          action: joinTeam,
+          disabled: !!!mobileUnit,
+        });
+      } else {
+        buttons.push({
+          text: "Move to Start Tile",
+          type: "action",
+          action: moveToStartTile,
+          disabled: !!!mobileUnit,
+        });
+      }
+      break;
+    }
+    case STATE_IN_PROGRESS: {
+      if (isPlayerTeamA || isPlayerTeamB) {
+        buttons.push({
+          text: "Reset Game",
+          type: "action",
+          action: resetGame,
+          disabled: !!!mobileUnit,
+        });
+      }
+      break;
+    }
   }
 
   return {
@@ -206,7 +243,7 @@ function getTeamUnitAtIndex(zone, team, index) {
 
 const getBuildingsByType = (buildingsArray, type) => {
   return buildingsArray.filter((building) =>
-    building.kind?.name?.value.toLowerCase().includes(type)
+    building.kind?.name?.value.toLowerCase().includes(type.toLowerCase())
   );
 };
 

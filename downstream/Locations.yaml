@@ -567,11 +567,11 @@ spec:
 ---
 kind: Building
 spec:
-  name: StartA
+  name: TW StartA
   location: [0, -5, 5]
 
 ---
 kind: Building
 spec:
-  name: StartB
+  name: TW StartB
   location: [0, 5, -5]

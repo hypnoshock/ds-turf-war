@@ -1,7 +1,7 @@
 ---
 kind: BuildingKind
 spec:
-  name: StartB
+  name: TW StartB
   description: "Starting point for Team B"
   category: custom
   model: 03-07
