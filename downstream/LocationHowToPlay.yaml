@@ -1,0 +1,12 @@
+
+---
+kind: Tile
+spec:
+  biome: DISCOVERED
+  location: [ -3, 6, -3 ]
+
+---
+kind: Building
+spec:
+  name: How To Play Turf Wars
+  location: [-3, 6, -3]

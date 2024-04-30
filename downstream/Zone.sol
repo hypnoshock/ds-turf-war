@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {Game} from "cog/IGame.sol";
 import {Dispatcher} from "cog/IDispatcher.sol";
 import {State, CompoundKeyDecoder} from "cog/IState.sol";
-import {Schema, CombatWinState, Node} from "@ds/schema/Schema.sol";
+import {Schema, CombatWinState, Node, Q, R, S} from "@ds/schema/Schema.sol";
 import {ZoneKind} from "@ds/ext/ZoneKind.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {LibUtils} from "./LibUtils.sol";
@@ -24,9 +24,12 @@ contract TurfWarsZone is ZoneKind, IZone {
     string constant TEAM_A = "teamA";
     string constant TEAM_B = "teamB";
 
+    int16 constant DEFAULT_CLAIM_RANGE = 2;
+
     // Data keys
     string constant DATA_GAME_STATE = "gameState";
     string constant DATA_READY = "ready";
+    string constant DATA_CLAIM_RANGE = "claimRange";
 
     enum GAME_STATE {NOT_STARTED, IN_PROGRESS, FINISHED}
 
@@ -49,37 +52,40 @@ contract TurfWarsZone is ZoneKind, IZone {
     // TODO: only bases can call this
     // TODO: use dynamic radius instead of a fixed 1 tile radius
     function setAreaWinner(Game ds, bytes24 origin, bytes24 player, bool overwrite) public {
-        (int16 z, int16 q, int16 r, int16 s) = getTileCoords(origin);
-        bytes24 zoneID = Node.Zone(z);
-        bytes24 tile;
+        (int16 originZ, int16 originQ, int16 originR, int16 originS) = getTileCoords(origin);
+        bytes24 zoneID = Node.Zone(originZ);
 
-        tile = Node.Tile(z, q, r, s);
-        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))
-            _setTileWinner(ds, tile, player, Node.Zone(z));
+        int16 range = int16(int256(uint256(ds.getState().getData(zoneID, DATA_CLAIM_RANGE))));
+        if (range == 0) {
+            range = DEFAULT_CLAIM_RANGE;
+        }
 
-        tile = Node.Tile(z, q + 0, r + 1, s + -1);
-        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))
-            _setTileWinner(ds, tile, player, Node.Zone(z));
+        uint256 i = 0;
+        for (int16 q = originQ - range; q <= originQ + range; q++) {
+            for (int16 r = originR - range; r <= originR + range; r++) {
+                int16 s = -q - r;
+                bytes24 nextTile = Node.Tile(originZ, q, r, s);
+                if (distance(origin, nextTile) <= uint256(uint16(range))) {
+                    if (overwrite || !_hasTileBeenWon(ds, nextTile, zoneID))
+                        _setTileWinner(ds, nextTile, player, zoneID);
 
-        tile = Node.Tile(z, q + 1, r + 0, s + -1);
-        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))            
-            _setTileWinner(ds, tile, player, Node.Zone(z));
+                    i++;
+                }
+            }
+        }
+    }
 
-        tile = Node.Tile(z, q + 1, r + -1, s + 0);
-        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))            
-            _setTileWinner(ds, tile, player, Node.Zone(z));
 
-        tile = Node.Tile(z, q + 0, r + -1, s + 1);
-        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))            
-            _setTileWinner(ds, tile, player, Node.Zone(z));
+    function distance(bytes24 tileA, bytes24 tileB) internal pure returns (uint256) {
+        int16[4] memory a = CompoundKeyDecoder.INT16_ARRAY(tileA);
+        int16[4] memory b = CompoundKeyDecoder.INT16_ARRAY(tileB);
+        return uint256(
+            (abs(int256(a[Q]) - int256(b[Q])) + abs(int256(a[R]) - int256(b[R])) + abs(int256(a[S]) - int256(b[S]))) / 2
+        );
+    }
 
-        tile = Node.Tile(z, q + -1, r + 0, s + 1);
-        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))            
-            _setTileWinner(ds, tile, player, Node.Zone(z));
-
-        tile = Node.Tile(z, q + -1, r + 1, s + 0);
-        if (overwrite || !_hasTileBeenWon(ds, tile, zoneID))            
-            _setTileWinner(ds, tile, player, Node.Zone(z));
+    function abs(int256 n) internal pure returns (int256) {
+        return n >= 0 ? n : -n;
     }
 
     function _setReady(Game ds, State state, bytes24 mobileUnitID, bytes24 zoneID) private {
@@ -293,6 +299,12 @@ contract TurfWarsZone is ZoneKind, IZone {
             }
         }
     }
+
+    function onCombatStart(Game /*ds*/, bytes24 /*zoneID*/, bytes24 /*mobileUnitID*/, bytes24 /*sessionID*/) external override {
+        revert("Combat not supported");
+    }
+
+    // -- Helpers
 
     function _hasTileBeenWon(Game ds, bytes24 tile, bytes24 zoneID) internal returns (bool) {
         return ds.getState().getData(zoneID, LibUtils.getTileWinnerKey(tile)) != bytes32(0);

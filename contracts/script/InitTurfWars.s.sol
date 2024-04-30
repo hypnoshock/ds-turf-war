@@ -43,7 +43,7 @@ contract InitTurfWars is Script {
         console.log("Orb Token Address: %s", address(orbToken));
 
         // Base building handle
-        bytes24 baseBuildingKind = Node.BuildingKind("Base", BuildingCategory.CUSTOM);
+        bytes24 baseBuildingKind = Node.BuildingKind("TW Base", BuildingCategory.CUSTOM);
         IBase baseBuilding = IBase(address(state.getImplementation(baseBuildingKind)));
         require(address(baseBuilding) != address(0), "Base Building not found");
         console.log("Base Building Address: %s", address(baseBuilding));
