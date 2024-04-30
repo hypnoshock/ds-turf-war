@@ -1,6 +1,8 @@
 set -e
 source .env
 
-# Even if the first command fails the second runs. Not sure why npm doesn't give me a non zero exit code.
-npm run -w downstream deploy:local:all
-npm run -w contracts init:local
+cd downstream
+ds -z $DS_ZONE -k $DS_DEPLOY_KEY -n local apply -R -f .
+
+cd ../contracts
+forge script --rpc-url http://localhost:8545 --broadcast -vvv script/InitTurfWars.s.sol

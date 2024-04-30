@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import { MatchIndexToEntity, MatchSky } from "./codegen/index.sol";
+import {MatchIndexToEntity, MatchSky} from "./codegen/index.sol";
 
 library Helper {
     function findFirstMatchInWindow(uint256 window) internal view returns (bytes32) {
@@ -14,7 +14,8 @@ library Helper {
         while (matchEntity != 0) {
             matchEntity = MatchIndexToEntity.get(matchIndex);
 
-            if (MatchSky.getCreatedAt(matchEntity) >= windowStart && MatchSky.getCreatedAt(matchEntity) < maxTimestamp) {
+            if (MatchSky.getCreatedAt(matchEntity) >= windowStart && MatchSky.getCreatedAt(matchEntity) < maxTimestamp)
+            {
                 foundMatch = matchEntity;
                 maxTimestamp = MatchSky.getCreatedAt(matchEntity);
             }

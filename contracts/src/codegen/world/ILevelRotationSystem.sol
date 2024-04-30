@@ -9,7 +9,7 @@ pragma solidity >=0.8.24;
  * @dev This interface is automatically generated from the corresponding system contract. Do not edit manually.
  */
 interface ILevelRotationSystem {
-  function setRotationStandard(bytes32 levelId, bool inRotation) external;
+    function setRotationStandard(bytes32 levelId, bool inRotation) external;
 
-  function setRotationSeasonPass(bytes32 levelId, bool inRotation) external;
+    function setRotationSeasonPass(bytes32 levelId, bool inRotation) external;
 }

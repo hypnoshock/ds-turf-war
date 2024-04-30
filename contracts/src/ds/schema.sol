@@ -66,7 +66,7 @@ library Node {
         uint32 id = uint32(uint256(keccak256(abi.encodePacked("building/", name))));
         return BuildingKind(id, category);
     }
-    
+
     function BuildingKind(uint64 id, BuildingCategory category) internal pure returns (bytes24) {
         return CompoundKeyEncoder.BYTES(
             Kind.BuildingKind.selector, bytes20(abi.encodePacked(uint32(0), id, uint64(category)))

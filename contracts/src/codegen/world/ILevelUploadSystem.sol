@@ -9,5 +9,6 @@ pragma solidity >=0.8.24;
  * @dev This interface is automatically generated from the corresponding system contract. Do not edit manually.
  */
 interface ILevelUploadSystem {
-  function uploadLevel(bytes32 levelId, bytes32[] memory templateIds, int32[] memory xs, int32[] memory ys) external;
+    function uploadLevel(bytes32 levelId, bytes32[] memory templateIds, int32[] memory xs, int32[] memory ys)
+        external;
 }

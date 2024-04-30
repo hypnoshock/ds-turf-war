@@ -6,7 +6,7 @@ pragma solidity >=0.8.0;
 /// @author Modified from Solady (https://github.com/Vectorized/solady/blob/main/src/utils/LibString.sol)
 library LibString {
     bytes16 private constant _SYMBOLS = "0123456789abcdef";
-    bytes16 private constant _CRUNK =  "@$%^&!*()+~={}[]";
+    bytes16 private constant _CRUNK = "@$%^&!*()+~={}[]";
     uint8 private constant _ADDRESS_LENGTH = 20;
 
     function toString(uint256 value) internal pure returns (string memory str) {
@@ -73,7 +73,7 @@ library LibString {
     function toHexStringNoPrefix(uint256 value, uint256 length) internal pure returns (string memory) {
         bytes memory buffer = new bytes(2 * length);
         for (uint256 i = 2 * length; i >= 1; --i) {
-            buffer[i-1] = _SYMBOLS[value & 0xf];
+            buffer[i - 1] = _SYMBOLS[value & 0xf];
             value >>= 4;
         }
         require(value == 0, "Strings: hex length insufficient");
@@ -83,13 +83,12 @@ library LibString {
     function toCrunkString(uint256 value, uint256 length) internal pure returns (string memory) {
         bytes memory buffer = new bytes(2 * length);
         for (uint256 i = 2 * length; i >= 1; --i) {
-            buffer[i-1] = _CRUNK[value & 0xf];
+            buffer[i - 1] = _CRUNK[value & 0xf];
             value >>= 4;
         }
         require(value == 0, "Strings: hex length insufficient");
         return string(buffer);
     }
-
 
     // address to NON-CHECKSUMED 0x prefixed hex string
     function toHexString(address addr) internal pure returns (string memory) {

@@ -21,7 +21,7 @@ contract Base is BuildingKind, IBase {
     bytes32 constant LEVEL_ISLE = 0x5468652049736c65000000000000000000000000000000000000000000000000;
 
     bytes32 constant SELECTED_LEVEL = LEVEL_KNIFE_FIGHT;
-                                        
+
     bytes32 constant HERO = 0x48616c6265726469657200000000000000000000000000000000000000000000;
 
     function startBattle() external {}
@@ -37,7 +37,7 @@ contract Base is BuildingKind, IBase {
         _;
     }
 
-    function use(Game ds, bytes24 buildingInstance, bytes24 actor, bytes calldata payload ) public override {
+    function use(Game ds, bytes24 buildingInstance, bytes24 actor, bytes calldata payload) public override {
         if ((bytes4)(payload) == this.startBattle.selector) {
             _startBattle(ds, buildingInstance);
         } else if ((bytes4)(payload) == this.claimWin.selector) {
@@ -47,12 +47,7 @@ contract Base is BuildingKind, IBase {
         }
     }
 
-    function init(
-        address _owner,
-        address _skyStrifeWorld,
-        address _turfWars,
-        bytes32 _firstMatchInWindow
-    ) public {
+    function init(address _owner, address _skyStrifeWorld, address _turfWars, bytes32 _firstMatchInWindow) public {
         if (owner != address(0) && msg.sender != owner) {
             revert("Base: Only owner can reinitialize");
         }
@@ -64,13 +59,18 @@ contract Base is BuildingKind, IBase {
 
     // -- Hooks
 
-    function construct(Game ds, bytes24 /*buildingInstanceID*/, bytes24 mobileUnitID, bytes memory payload) public override {
+    function construct(Game ds, bytes24, /*buildingInstanceID*/ bytes24 mobileUnitID, bytes memory payload)
+        public
+        override
+    {
         State state = ds.getState();
         int16[4] memory coords = abi.decode(payload, (int16[4]));
         bytes24 zone = Node.Zone(coords[0]);
         IZone zoneImpl = IZone(state.getImplementation(zone));
-        require (address(zoneImpl) != address(0), "Base::construct - No implementation for zone");
-        zoneImpl.setAreaWinner(ds, Node.Tile(coords[0], coords[1], coords[2], coords[3]), state.getOwner(mobileUnitID), false);
+        require(address(zoneImpl) != address(0), "Base::construct - No implementation for zone");
+        zoneImpl.setAreaWinner(
+            ds, Node.Tile(coords[0], coords[1], coords[2], coords[3]), state.getOwner(mobileUnitID), false
+        );
     }
 
     // -- Sky Strife Battles
@@ -89,20 +89,24 @@ contract Base is BuildingKind, IBase {
 
     function _startBattle(Game ds, bytes24 buildingInstance) internal {
         State state = ds.getState();
-        
+
         uint256 count = uint256(state.getData(buildingInstance, "count")) + 1;
         ds.getDispatcher().dispatch(
             abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, "count", bytes32(count)))
         );
         bytes24 tile = state.getFixedLocation(buildingInstance);
         (int16 z, int16 q, int16 r, int16 s) = LibUtils.getTileCoords(tile);
-        string memory name = string(abi.encodePacked(
-            "TW_", 
-            LibString.toString(uint256(uint16(z))), ":",
-            LibString.toCrunkString(uint256(uint16(q)), 2),
-            LibString.toCrunkString(uint256(uint16(r)), 2),
-            LibString.toCrunkString(uint256(uint16(s)), 2),
-            LibString.toString(uint256(count))));
+        string memory name = string(
+            abi.encodePacked(
+                "TW_",
+                LibString.toString(uint256(uint16(z))),
+                ":",
+                LibString.toCrunkString(uint256(uint16(q)), 2),
+                LibString.toCrunkString(uint256(uint16(r)), 2),
+                LibString.toCrunkString(uint256(uint16(s)), 2),
+                LibString.toString(uint256(count))
+            )
+        );
 
         bytes32 matchID = _getMatchID(buildingInstance);
 
@@ -117,12 +121,12 @@ contract Base is BuildingKind, IBase {
 
     function _claimWin(Game ds, bytes24 buildingInstance, bytes24 actor) internal {
         State state = ds.getState();
-        
+
         bytes24 tile = state.getFixedLocation(buildingInstance);
         bytes24 zone = Node.Zone(getTileZone(tile));
         string memory tileMatchKey = LibUtils.getTileMatchKey(tile);
         bytes32 matchID = state.getData(buildingInstance, tileMatchKey);
-        
+
         require(matchID != 0, "No match to claim win for");
 
         bytes24 player = state.getOwner(actor);
@@ -138,7 +142,7 @@ contract Base is BuildingKind, IBase {
         zoneImpl.setAreaWinner(ds, tile, player, true);
     }
 
-    function _getMatchID(bytes24 buildingInstance) view internal returns (bytes32) {
+    function _getMatchID(bytes24 buildingInstance) internal view returns (bytes32) {
         return bytes32((uint256(keccak256(abi.encodePacked(buildingInstance, block.timestamp))) & 0xFFFFFFFF) << 224);
     }
 

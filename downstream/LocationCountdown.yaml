@@ -1,0 +1,11 @@
+---
+kind: Tile
+spec:
+  biome: DISCOVERED
+  location: [3, -6, 3]
+
+---
+kind: Building
+spec:
+  name: Countdown Building
+  location: [3, -6, 3]

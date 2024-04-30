@@ -9,7 +9,7 @@ pragma solidity >=0.8.24;
  * @dev This interface is automatically generated from the corresponding system contract. Do not edit manually.
  */
 interface IAllowListSystem {
-  function isAllowed(bytes32 matchEntity, address account) external view returns (bool);
+    function isAllowed(bytes32 matchEntity, address account) external view returns (bool);
 
-  function setMembers(bytes32 matchEntity, address[] memory accounts) external;
+    function setMembers(bytes32 matchEntity, address[] memory accounts) external;
 }

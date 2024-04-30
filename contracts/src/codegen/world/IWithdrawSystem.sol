@@ -9,5 +9,5 @@ pragma solidity >=0.8.24;
  * @dev This interface is automatically generated from the corresponding system contract. Do not edit manually.
  */
 interface IWithdrawSystem {
-  function withdrawEth(address to, uint256 amount) external;
+    function withdrawEth(address to, uint256 amount) external;
 }

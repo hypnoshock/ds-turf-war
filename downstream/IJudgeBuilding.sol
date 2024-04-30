@@ -8,10 +8,5 @@ interface IJudgeBuilding {
     function setGame(address game) external;
     function setBattleBuilding(IBattleBoy battleBuilding) external;
 
-    function init(
-        address _owner,
-        address ds,
-        IBattleBoy battleBuilding
-    ) external;
-    
+    function init(address _owner, address ds, IBattleBoy battleBuilding) external;
 }

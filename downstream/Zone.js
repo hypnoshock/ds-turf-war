@@ -2,6 +2,13 @@ import ds from "downstream";
 
 const nullBytes24 = `0x${"00".repeat(24)}`;
 const TILE_ID_PREFIX = "0xe5a62ffc";
+const BLOCK_TIME_SECS = 2;
+const GAME_STATE_NOT_STARTED = 0;
+const GAME_STATE_IN_PROGRESS = 1;
+const GAME_STATE_FINISHED = 2;
+const CLOCK_MSG = "Turf Wars ";
+const LEFT_COUNTER_MSG = "TURF! WARS! ";
+const RIGHT_COUNTER_MSG = "_-`'´-";
 
 //COUNTING TILES
 const p1TileList = [];
@@ -20,15 +27,12 @@ export default async function update(state, block) {
   const {
     prizePool,
     gameState,
-    startBlock,
-    endBlock,
     teamALength,
     teamBLength,
     teamATiles,
     teamBTiles,
-    teamAPlayers,
-    teamBPlayers,
-  } = getTurfWarsState(state, zone);
+    remainingTimeMs,
+  } = getTurfWarsState(state, block, zone);
 
   // console.log("teamATiles", teamATiles);
   // console.log("teamAPlayers", teamAPlayers);
@@ -72,20 +76,50 @@ export default async function update(state, block) {
     });
   }
 
-  mapObj.push(getCounterMapObj(state, "TeamACounterDisplay", teamAScore));
-  mapObj.push(getCounterMapObj(state, "TeamBCounterDisplay", teamBScore));
+  mapObj.push(
+    getCounterMapObj(
+      state,
+      block,
+      gameState,
+      "TeamACounterDisplay",
+      teamAScore,
+      LEFT_COUNTER_MSG
+    )
+  );
+
+  mapObj.push(
+    getCounterMapObj(
+      state,
+      block,
+      gameState,
+      "TeamBCounterDisplay",
+      teamBScore,
+      RIGHT_COUNTER_MSG
+    )
+  );
 
   // check current game state:
   // - NotStarted : GameActive == false
   // - Running : GameActive == true && endBlock < currentBlock
   // - GameOver : GameActive == true && endBlock >= currentBlock
 
-  const nowBlock = block;
-  const blocksLeft = endBlock > nowBlock ? endBlock - nowBlock : 0;
-  const blocksFromStart = nowBlock - startBlock;
-  const timeLeftMs = blocksLeft * 2 * 1000;
-  const timeSinceStartMs =
-    startBlock <= nowBlock ? blocksFromStart * 2 * 1000 : countdownTotalTime;
+  // const blocksFromStart = nowBlock - startBlock;
+  // const timeSinceStartMs =
+  //   startBlock <= nowBlock
+  //     ? blocksFromStart * BLOCK_TIME_SECS * 1000
+  //     : countdownTotalTime;
+
+  mapObj.push(
+    getCountdownMapObj(
+      state,
+      block,
+      "Countdown Building",
+      teamALength,
+      teamBLength,
+      remainingTimeMs,
+      gameState
+    )
+  );
 
   return {
     version: 1,
@@ -126,16 +160,25 @@ export default async function update(state, block) {
 
 // ------------------------------------------------------- Turf Wars helpers
 
-function getTurfWarsState(state, zone) {
+function getTurfWarsState(state, block, zone) {
   if (!zone) {
     throw new Error("Zone not found");
   }
   const prizePool = getDataInt(zone, "prizePool");
-  const gameState = getDataInt(zone, "gameState");
   const startBlock = getDataInt(zone, "startBlock");
   const endBlock = getDataInt(zone, "endBlock");
   const teamALength = getDataInt(zone, "teamALength");
   const teamBLength = getDataInt(zone, "teamBLength");
+
+  // Remaining time
+  const nowBlock = block;
+  const remainingBlocks = endBlock > nowBlock ? endBlock - nowBlock : 0;
+  const remainingTimeMs = remainingBlocks * BLOCK_TIME_SECS * 1000;
+
+  let gameState = getDataInt(zone, "gameState");
+  if (remainingBlocks === 0 && gameState == GAME_STATE_IN_PROGRESS) {
+    gameState = GAME_STATE_FINISHED;
+  }
 
   const teamAPlayers = [];
   for (let i = 0; i < teamALength; i++) {
@@ -198,20 +241,78 @@ function getTurfWarsState(state, zone) {
     teamBTiles,
     teamAPlayers,
     teamBPlayers,
+    remainingTimeMs,
   };
 }
 
-function getCounterMapObj(state, counterBuildingName, count) {
+function getCounterMapObj(
+  state,
+  block,
+  gameState,
+  counterBuildingName,
+  count,
+  msg
+) {
   const counterBuilding = state.world?.buildings.find(
     (b) => b.kind?.name?.value == counterBuildingName
   );
+
+  if (!msg) msg = 0;
 
   if (counterBuilding) {
     return {
       type: "building",
       id: `${counterBuilding.id}`,
       key: "labelText",
-      value: `${count}`,
+      value:
+        gameState == GAME_STATE_NOT_STARTED
+          ? msg.slice(block % msg.length, (block % msg.length) + 1)
+          : count,
+    };
+  } else {
+    return {};
+  }
+}
+
+function getCountdownMapObj(
+  state,
+  block,
+  counterBuildingName,
+  teamALength,
+  teamBLength,
+  remainingTimeMs,
+  gameState
+) {
+  const maxDisplayChars = 4;
+  const counterBuilding = state.world?.buildings.find(
+    (b) => b.kind?.name?.value == counterBuildingName
+  );
+
+  const getMessage = () => {
+    let msg =
+      teamALength > 0 || teamBLength > 0
+        ? `${teamALength}V${teamBLength}`
+        : CLOCK_MSG;
+
+    if (msg.length > maxDisplayChars) {
+      // scroll it
+      const startSlice = block % msg.length;
+      return (msg + msg).slice(startSlice, startSlice + maxDisplayChars);
+    } else {
+      // display it
+      return msg;
+    }
+  };
+
+  if (counterBuilding) {
+    return {
+      type: "building",
+      id: `${counterBuilding.id}`,
+      key: "labelText",
+      value:
+        gameState == GAME_STATE_NOT_STARTED
+          ? getMessage()
+          : formatTime(remainingTimeMs),
     };
   } else {
     return {};

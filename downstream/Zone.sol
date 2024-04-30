@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {Game} from "cog/IGame.sol";
 import {Dispatcher} from "cog/IDispatcher.sol";
 import {State, CompoundKeyDecoder} from "cog/IState.sol";
-import {Schema, CombatWinState, Node, Q, R, S} from "@ds/schema/Schema.sol";
+import {Schema, CombatWinState, Node, Q, R, S, BLOCK_TIME_SECS} from "@ds/schema/Schema.sol";
 import {ZoneKind} from "@ds/ext/ZoneKind.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {LibUtils} from "./LibUtils.sol";
@@ -19,19 +19,32 @@ contract TurfWarsZone is ZoneKind, IZone {
     function unsetReady() external {}
     function reset(bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings) external {}
     // function claim() external {}
-    
-    enum Team {NONE, A, B}
+
+    enum Team {
+        NONE,
+        A,
+        B
+    }
+
     string constant TEAM_A = "teamA";
     string constant TEAM_B = "teamB";
 
     int16 constant DEFAULT_CLAIM_RANGE = 2;
+    uint64 constant DEFAULT_GAME_DURATION_BLOCKS = (2 * 60) / BLOCK_TIME_SECS;
 
     // Data keys
     string constant DATA_GAME_STATE = "gameState";
     string constant DATA_READY = "ready";
     string constant DATA_CLAIM_RANGE = "claimRange";
+    string constant DATA_GAME_DURATION_BLOCKS = "gameDurationBlocks";
+    string constant DATA_START_BLOCK = "startBlock";
+    string constant DATA_END_BLOCK = "endBlock";
 
-    enum GAME_STATE {NOT_STARTED, IN_PROGRESS, FINISHED}
+    enum GAME_STATE {
+        NOT_STARTED,
+        IN_PROGRESS,
+        FINISHED
+    }
 
     function use(Game ds, bytes24 zoneID, bytes24 mobileUnitID, bytes calldata payload) public override {
         State state = ds.getState();
@@ -42,7 +55,8 @@ contract TurfWarsZone is ZoneKind, IZone {
         } else if ((bytes4)(payload) == this.unsetReady.selector) {
             _unsetReady(ds, state, mobileUnitID, zoneID);
         } else if ((bytes4)(payload) == this.reset.selector) {
-            (bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings) = abi.decode(payload[4:], (bytes24[], bytes24[]));
+            (bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings) =
+                abi.decode(payload[4:], (bytes24[], bytes24[]));
             _reset(ds, state, zoneID, dirtyTiles, baseBuildings);
         } else {
             revert("TurfWarsZone: Invalid function signature");
@@ -52,7 +66,7 @@ contract TurfWarsZone is ZoneKind, IZone {
     // TODO: only bases can call this
     // TODO: use dynamic radius instead of a fixed 1 tile radius
     function setAreaWinner(Game ds, bytes24 origin, bytes24 player, bool overwrite) public {
-        (int16 originZ, int16 originQ, int16 originR, int16 originS) = getTileCoords(origin);
+        (int16 originZ, int16 originQ, int16 originR, /*int16 originS*/) = getTileCoords(origin);
         bytes24 zoneID = Node.Zone(originZ);
 
         int16 range = int16(int256(uint256(ds.getState().getData(zoneID, DATA_CLAIM_RANGE))));
@@ -66,15 +80,15 @@ contract TurfWarsZone is ZoneKind, IZone {
                 int16 s = -q - r;
                 bytes24 nextTile = Node.Tile(originZ, q, r, s);
                 if (distance(origin, nextTile) <= uint256(uint16(range))) {
-                    if (overwrite || !_hasTileBeenWon(ds, nextTile, zoneID))
+                    if (overwrite || !_hasTileBeenWon(ds, nextTile, zoneID)) {
                         _setTileWinner(ds, nextTile, player, zoneID);
+                    }
 
                     i++;
                 }
             }
         }
     }
-
 
     function distance(bytes24 tileA, bytes24 tileB) internal pure returns (uint256) {
         int16[4] memory a = CompoundKeyDecoder.INT16_ARRAY(tileA);
@@ -93,12 +107,12 @@ contract TurfWarsZone is ZoneKind, IZone {
         if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) != GAME_STATE.NOT_STARTED) {
             revert("Game already in progress");
         }
-        
+
         // TODO: Check if caller is the owner of the unit
         // if (state.getOwner(mobileUnitID) != Node.Player(msg.sender)) {
         //     revert("Not owner of unit");
         // }
-        
+
         // Get unit team
         Team team = _getUnitTeam(state, zoneID, mobileUnitID);
         if (team == Team.NONE) {
@@ -108,11 +122,26 @@ contract TurfWarsZone is ZoneKind, IZone {
         // Check if other team is ready
         if (Team(uint256(state.getData(zoneID, DATA_READY))) == (team == Team.A ? Team.B : Team.A)) {
             // Other team ready, start game
-            _setDataOnZone(ds.getDispatcher(), zoneID, DATA_GAME_STATE, bytes32(uint256(GAME_STATE.IN_PROGRESS)));
+            _startGame(ds, state, zoneID);
         } else {
             // Set team as ready
             _setDataOnZone(ds.getDispatcher(), zoneID, DATA_READY, bytes32(uint256(team)));
         }
+    }
+
+    function _startGame(Game ds, State state, bytes24 zoneID) internal {
+        // Set game state to in progress
+        _setDataOnZone(ds.getDispatcher(), zoneID, DATA_GAME_STATE, bytes32(uint256(GAME_STATE.IN_PROGRESS)));
+
+        // Set start block
+        _setDataOnZone(ds.getDispatcher(), zoneID, DATA_START_BLOCK, bytes32(uint256(block.number)));
+
+        // Set end block
+        uint256 gameDurationBlocks = uint256(state.getData(zoneID, DATA_GAME_DURATION_BLOCKS));
+        if (gameDurationBlocks == 0) {
+            gameDurationBlocks = DEFAULT_GAME_DURATION_BLOCKS;
+        }
+        _setDataOnZone(ds.getDispatcher(), zoneID, DATA_END_BLOCK, bytes32(uint256(block.number) + gameDurationBlocks));
     }
 
     function _unsetReady(Game ds, State state, bytes24 mobileUnitID, bytes24 zoneID) private {
@@ -120,12 +149,12 @@ contract TurfWarsZone is ZoneKind, IZone {
         if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) != GAME_STATE.NOT_STARTED) {
             revert("Game already in progress");
         }
-        
+
         // TODO: Check if caller is the owner of the unit
         // if (state.getOwner(mobileUnitID) != Node.Player(msg.sender)) {
         //     revert("Not owner of unit");
         // }
-        
+
         // Get unit team
         Team team = _getUnitTeam(state, zoneID, mobileUnitID);
         if (team == Team.NONE) {
@@ -133,19 +162,19 @@ contract TurfWarsZone is ZoneKind, IZone {
         }
 
         // Check that the team was set to ready
-        require (Team(uint256(state.getData(zoneID, DATA_READY))) == team, "Team not ready");
+        require(Team(uint256(state.getData(zoneID, DATA_READY))) == team, "Team not ready");
 
         _setDataOnZone(ds.getDispatcher(), zoneID, DATA_READY, bytes32(uint256(Team.NONE)));
     }
 
     function _join(Game ds, State state, bytes24 unitID, bytes24 zoneID) private {
         // check game not in progress
-        if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) != GAME_STATE.NOT_STARTED) revert("Cannot join game in progress");
+        if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) != GAME_STATE.NOT_STARTED) {
+            revert("Cannot join game in progress");
+        }
 
         // Check if unit has already joined
-        if (
-            _isUnitInTeam(state, zoneID, TEAM_A, unitID) || _isUnitInTeam(state, zoneID, TEAM_B, unitID)
-        ) {
+        if (_isUnitInTeam(state, zoneID, TEAM_A, unitID) || _isUnitInTeam(state, zoneID, TEAM_B, unitID)) {
             revert("Already joined");
         }
 
@@ -222,7 +251,9 @@ contract TurfWarsZone is ZoneKind, IZone {
 
     // TODO: Only a player or owner can call this
     // TODO: check zone IDs in dirtyTiles belong to the zone
-    function _reset(Game ds, State state, bytes24 zoneID, bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings) internal {
+    function _reset(Game ds, State state, bytes24 zoneID, bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings)
+        internal
+    {
         Dispatcher dispatcher = ds.getDispatcher();
 
         // Reset winner on each tile
@@ -230,7 +261,7 @@ contract TurfWarsZone is ZoneKind, IZone {
             bytes24 tile = dirtyTiles[i];
             (int16 tileZoneKey,,,) = getTileCoords(tile);
             bytes24 tileZone = Node.Zone(tileZoneKey);
-            require (tileZone == zoneID, "Tile not in zone");
+            require(tileZone == zoneID, "Tile not in zone");
             if (_hasTileBeenWon(ds, tile, tileZone)) {
                 _setTileWinner(ds, tile, bytes24(0), tileZone);
             }
@@ -245,13 +276,10 @@ contract TurfWarsZone is ZoneKind, IZone {
         }
 
         _setDataOnZone(dispatcher, zoneID, DATA_GAME_STATE, bytes32(uint256(GAME_STATE.NOT_STARTED)));
-        _setDataOnZone(
-            dispatcher, zoneID, string(abi.encodePacked(TEAM_A, "Length")), bytes32(0)
-        );
-        _setDataOnZone(
-            dispatcher, zoneID, string(abi.encodePacked(TEAM_B, "Length")), bytes32(0)
-        );
+        _setDataOnZone(dispatcher, zoneID, string(abi.encodePacked(TEAM_A, "Length")), bytes32(0));
+        _setDataOnZone(dispatcher, zoneID, string(abi.encodePacked(TEAM_B, "Length")), bytes32(0));
         _setDataOnZone(dispatcher, zoneID, DATA_READY, bytes32(uint256(Team.NONE)));
+        _setDataOnZone(dispatcher, zoneID, DATA_END_BLOCK, bytes32(uint256(block.number)));
     }
 
     // -- Hooks
@@ -263,48 +291,79 @@ contract TurfWarsZone is ZoneKind, IZone {
         bytes24 mobileUnitTile = state.getCurrentLocation(mobileUnitID, uint64(block.number));
         (int16 z,,,) = getTileCoords(mobileUnitTile);
 
-        // Check game has started and check that the player is in the game
-        if (mobileUnitTile != Node.Tile(z, 0, 0, 0)) {
-            // Don't allow players to move before game has started
-            if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) == GAME_STATE.NOT_STARTED) {
-                // Allow players to move to the starting tile
-                // TODO: Make these positions configurable / dynamic
-                if (_isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID) && mobileUnitTile == Node.Tile(z, 0, -5, 5)) {
-                    return;
-                } else if (_isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID) && mobileUnitTile == Node.Tile(z, 0, 5, -5)) {
-                    return;
-                } else {
-                    // Units that aren't in a team but where already in the zone before the game started can move (to allow them to walk back to centre)
-                    // If they are on the centre tile they are locked to it
-                    bytes24 mobileUnitPrevTile = state.getPrevLocation(mobileUnitID);
-                    (int16 prevZ,,,) = getTileCoords(mobileUnitTile);
-                    if (prevZ == z && mobileUnitPrevTile != Node.Tile(z, 0, 0, 0)) {
-                        return;
-                    }
-                }
+        GAME_STATE gameState = _getGameState(state, zoneID);
 
-
-                revert("Unit cannot move, Game not started");
+        if (gameState == GAME_STATE.NOT_STARTED) {
+            bytes24 centerTile = Node.Tile(z, 0, 0, 0);
+            if (mobileUnitTile == centerTile) {
+                return;
             }
 
-            if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) == GAME_STATE.IN_PROGRESS) {
-                if (!_isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID) && !_isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID)) {
-                    revert("Unit not in game");
+            bool isTeamA = _isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID);
+            bool isTeamB = _isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
+
+            // Units who are on a team are allowed to move to the starting positions
+            // TODO: Make these positions configurable / dynamic
+            if (isTeamA && mobileUnitTile == Node.Tile(z, 0, -5, 5)) {
+                return;
+            } else if (isTeamB && mobileUnitTile == Node.Tile(z, 0, 5, -5)) {
+                return;
+            }
+
+            // Units that aren't in a team but where already in the zone before the game started can move (to allow them to walk back to centre)
+            // If they are on the centre tile they are locked to it
+            if (!isTeamA && !isTeamB) {
+                bytes24 mobileUnitPrevTile = state.getPrevLocation(mobileUnitID);
+                (int16 prevZ,,,) = getTileCoords(mobileUnitTile);
+                if (prevZ == z && mobileUnitPrevTile != centerTile) {
+                    return;
                 }
             }
 
-            // Claim tile
+            revert("Unit cannot move, Game not started");
+        } else if (gameState == GAME_STATE.IN_PROGRESS) {
+            bool isUnitInTeam =
+                _isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID) || _isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
+            require(isUnitInTeam, "Cannot move, unit not on a team");
+
+            // Claim unclaimed tile
             if (!_hasTileBeenWon(ds, mobileUnitTile, zoneID)) {
                 _setTileWinner(ds, mobileUnitTile, player, zoneID);
             }
+        } else if (gameState == GAME_STATE.FINISHED) {
+            bytes24 centerTile = Node.Tile(z, 0, 0, 0);
+            if (mobileUnitTile == centerTile) {
+                return;
+            }
+
+            // Units already in zone are allowed to walk back to the centre
+            bytes24 mobileUnitPrevTile = state.getPrevLocation(mobileUnitID);
+            (int16 prevZ,,,) = getTileCoords(mobileUnitTile);
+            if (prevZ == z && mobileUnitPrevTile != centerTile) {
+                return;
+            }
+
+            revert("Unit cannot move, game must be reset first");
         }
     }
 
-    function onCombatStart(Game /*ds*/, bytes24 /*zoneID*/, bytes24 /*mobileUnitID*/, bytes24 /*sessionID*/) external override {
-        revert("Combat not supported");
+    function onCombatStart(Game, /*ds*/ bytes24, /*zoneID*/ bytes24, /*mobileUnitID*/ bytes24 /*sessionID*/ )
+        external
+        override
+        pure
+    {
+        revert("Combat not supported in this zone");
     }
 
     // -- Helpers
+
+    function _getGameState(State state, bytes24 zoneID) internal view returns (GAME_STATE) {
+        GAME_STATE gameState = GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE)));
+        if (gameState == GAME_STATE.IN_PROGRESS && block.number >= uint256(state.getData(zoneID, DATA_END_BLOCK))) {
+            return GAME_STATE.FINISHED;
+        }
+        return gameState;
+    }
 
     function _hasTileBeenWon(Game ds, bytes24 tile, bytes24 zoneID) internal returns (bool) {
         return ds.getState().getData(zoneID, LibUtils.getTileWinnerKey(tile)) != bytes32(0);

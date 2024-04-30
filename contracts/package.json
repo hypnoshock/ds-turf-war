@@ -1,7 +1,6 @@
 {
   "name": "contracts",
   "scripts": {
-    "init:local": "forge script --rpc-url http://localhost:8545 --broadcast -vvv script/InitTurfWars.s.sol",
     "getOrbAddress:local": "forge script --rpc-url http://localhost:8545 -vvv script/GetOrbAddress.s.sol",
     "setFirstMatch:local": "forge script --rpc-url http://localhost:8545 --broadcast -vvv script/SetFirstMatchInWindow.s.sol"
   },
