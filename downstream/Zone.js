@@ -7,7 +7,7 @@ const GAME_STATE_NOT_STARTED = 0;
 const GAME_STATE_IN_PROGRESS = 1;
 const GAME_STATE_FINISHED = 2;
 const CLOCK_MSG = "Turf Wars ";
-const LEFT_COUNTER_MSG = "TURF! WARS! ";
+const LEFT_COUNTER_MSG = "TURF WARS! ";
 const RIGHT_COUNTER_MSG = "_-`'´-";
 
 //COUNTING TILES
@@ -259,6 +259,8 @@ function getCounterMapObj(
 
   if (!msg) msg = 0;
 
+  console.log(counterBuildingName, count);
+
   if (counterBuilding) {
     return {
       type: "building",
@@ -267,7 +269,7 @@ function getCounterMapObj(
       value:
         gameState == GAME_STATE_NOT_STARTED
           ? msg.slice(block % msg.length, (block % msg.length) + 1)
-          : count,
+          : `${count}`,
     };
   } else {
     return {};

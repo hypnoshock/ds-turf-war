@@ -69,7 +69,12 @@ contract TurfWarsZone is ZoneKind, IZone {
         (int16 originZ, int16 originQ, int16 originR, /*int16 originS*/) = getTileCoords(origin);
         bytes24 zoneID = Node.Zone(originZ);
 
-        int16 range = int16(int256(uint256(ds.getState().getData(zoneID, DATA_CLAIM_RANGE))));
+        State state = ds.getState();
+        if (_getGameState(state, zoneID) != GAME_STATE.IN_PROGRESS) {
+            return;
+        }
+
+        int16 range = int16(int256(uint256(state.getData(zoneID, DATA_CLAIM_RANGE))));
         if (range == 0) {
             range = DEFAULT_CLAIM_RANGE;
         }
