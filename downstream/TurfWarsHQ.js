@@ -1,5 +1,7 @@
 import ds from "downstream";
 
+const nullBytes24 = `0x${"00".repeat(24)}`;
+
 const STATE_NOT_STARTED = 0;
 const STATE_IN_PROGRESS = 1;
 
@@ -60,6 +62,17 @@ export default async function update(state) {
       {
         name: "ZONE_USE",
         args: [mobileUnit.id, ds.encodeCall("function join()", [])],
+      },
+      {
+        name: "TRANSFER_ITEM_MOBILE_UNIT",
+        args: [
+          mobileUnit.id,
+          [mobileUnit.nextLocation.tile.id, mobileUnit.id],
+          [0, 0],
+          [0, 0],
+          nullBytes24,
+          2,
+        ],
       },
       {
         name: "MOVE_MOBILE_UNIT",

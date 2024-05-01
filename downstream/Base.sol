@@ -156,6 +156,7 @@ contract Base is BuildingKind, IBase {
 
         IZone zoneImpl = IZone(state.getImplementation(zone));
         zoneImpl.setAreaWinner(ds, tile, player, true);
+        // zoneImpl.spawnHammer(ds, state, tile, 1);
     }
 
     function _getMatchID(bytes24 buildingInstance) internal view returns (bytes32) {

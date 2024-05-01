@@ -44,24 +44,24 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 ## To-do
 
 - [ ] Win state (Which side has the most tiles after the timer has run out)
+- [ ] Successfully defending your tower shouldn't destroy it
+- [ ] Eth and orb withdrawal on mediator contract
 - [ ] Fix deploy script to work with Garnet
   - [x] Don't redeploy interim script
   - [ ] Initial deploy of interim script to be done by zone contract
-- [ ] Raise cost of base building so you can only build 1 or 2
-- [ ] Choosing your team intead of being assigned a team
-- [ ] Don't allow battles to be started by non Turf Wars players
-- [ ] Don't allow battles to be started until the game starts
-- [x] If placing a battle building down on an unoccupied tile, the player can gain that tile after a period of time of they are not challenged
+  - [ ] Buying season passes all a bit sketchy
+- [ ] Choosing your team instead of being assigned a team
 - [ ] Configurable matches
   - [ ] Size of claimed area
   - [ ] Match length
   - [ ] Auto tile painting
   - [ ] Number of buildings you can construct
   - [ ] Allow construction of blockers
-- [ ] Eth and orb withdrawal on mediator contract
 - [ ] Restrict construction to bases and blockers (if allowed)
-- [ ] Random spawn of powerups
-  - [ ] Freeze opponents for x blocks
+- [ ] Don't allow battles to be started by non Turf Wars players
+- [ ] Don't allow battles to be started until the game starts
+- [x] If placing a battle building down on an unoccupied tile, the player can gain that tile after a period of time of they are not challenged
+- [x] Raise cost of base building so you can only build 1 or 2
 - [x] Offset the map so 0, 0, 0 is where the Judge building is
 - [x] Restrict Battle building UI so it disables the 'Start Battle' button when there is a Sky Strife match waiting to be played on that tile
 - [x] After a match has started add a button to directly open the Sky Strife match: `http://localhost:1337/match?asPlayer=&useExternalWallet=&match={matchID}`
@@ -71,4 +71,5 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 
 ## Gameplay ideas
 
-Maybe instead of goo to build a base building, you have to build one with a battalion item which opens up a another gameplay mechanic where you have to produce a battalion from a barracks. This also means if the challenger loses they'll lose their battalion
+- [ ] Random spawn of powerups
+  - [ ] Freeze opponents for x blocks

@@ -8,7 +8,7 @@ import {Schema, CombatWinState, Node, Q, R, S, BLOCK_TIME_SECS} from "@ds/schema
 import {ZoneKind} from "@ds/ext/ZoneKind.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {LibUtils} from "./LibUtils.sol";
-import {IZone, GAME_STATE} from "./IZone.sol";
+import {IZone, GAME_STATE, HAMMER_ITEM} from "./IZone.sol";
 import "@ds/utils/LibString.sol";
 
 using Schema for State;
@@ -31,6 +31,7 @@ contract TurfWarsZone is ZoneKind, IZone {
 
     int16 constant DEFAULT_CLAIM_RANGE = 2;
     uint64 constant DEFAULT_GAME_DURATION_BLOCKS = (15 * 60) / BLOCK_TIME_SECS;
+    uint64 constant DEFAULT_HAMMER_COUNT = 2;
 
     // Data keys
     string constant DATA_GAME_STATE = "gameState";
@@ -58,9 +59,8 @@ contract TurfWarsZone is ZoneKind, IZone {
     }
 
     // TODO: only bases can call this
-    // TODO: use dynamic radius instead of a fixed 1 tile radius
-    function setAreaWinner(Game ds, bytes24 origin, bytes24 player, bool overwrite) public {
-        (int16 originZ, int16 originQ, int16 originR, /*int16 originS*/) = getTileCoords(origin);
+    function setAreaWinner(Game ds, bytes24 origin, bytes24 player, bool destroyBuilding) public {
+        (int16 originZ, int16 originQ, int16 originR, int16 originS ) = getTileCoords(origin);
         bytes24 zoneID = Node.Zone(originZ);
 
         State state = ds.getState();
@@ -68,24 +68,30 @@ contract TurfWarsZone is ZoneKind, IZone {
             return;
         }
 
-        int16 range = int16(int256(uint256(state.getData(zoneID, DATA_CLAIM_RANGE))));
-        if (range == 0) {
-            range = DEFAULT_CLAIM_RANGE;
-        }
+        // Probably mega expensive. Callilng _setTileWinner each time probably is
+        {
+            int16 range = int16(int256(uint256(state.getData(zoneID, DATA_CLAIM_RANGE))));
+            if (range == 0) {
+                range = DEFAULT_CLAIM_RANGE;
+            }
 
-        uint256 i = 0;
-        for (int16 q = originQ - range; q <= originQ + range; q++) {
-            for (int16 r = originR - range; r <= originR + range; r++) {
-                int16 s = -q - r;
-                bytes24 nextTile = Node.Tile(originZ, q, r, s);
-                if (distance(origin, nextTile) <= uint256(uint16(range))) {
-                    if (overwrite || !_hasTileBeenWon(ds, nextTile, zoneID)) {
-                        _setTileWinner(ds, nextTile, player, zoneID);
+            for (int16 q = originQ - range; q <= originQ + range; q++) {
+                for (int16 r = originR - range; r <= originR + range; r++) {
+                    int16 s = -q - r;
+                    bytes24 nextTile = Node.Tile(originZ, q, r, s);
+                    if (distance(origin, nextTile) <= uint256(uint16(range))) {
+                        if (destroyBuilding || !_hasTileBeenWon(ds, nextTile, zoneID)) {
+                            _setTileWinner(ds, nextTile, player, zoneID);
+                        }
+                        // tileCount++;
                     }
-
-                    i++;
                 }
             }
+        }
+
+        if (destroyBuilding) {
+            _spawnHammer(ds, state, origin, 1);
+            ds.getDispatcher().dispatch(abi.encodeCall(Actions.DEV_DESTROY_BUILDING, (originZ, originQ, originR, originS)));
         }
     }
 
@@ -188,6 +194,48 @@ contract TurfWarsZone is ZoneKind, IZone {
             unitID,
             zoneID
         );
+
+        _spawnHammer(ds, state, state.getCurrentLocation(unitID, uint64(block.number)), DEFAULT_HAMMER_COUNT);
+    }
+
+    // TODO: base only
+    function spawnHammer(Game ds, State state, bytes24 tileID, uint64 count) public {
+        // get base kind
+        // get implementation
+        // require caller == implementation
+        
+        // _spawnHammer(ds, state, tileID, count);
+    }
+
+    function _spawnHammer(Game ds, State state, bytes24 tileID, uint64 count) private {
+        (int16 z, int16 q, int16 r, int16 s) = getTileCoords(tileID);
+
+        bytes24[] memory items = new bytes24[](4);
+        uint64[] memory balances = new uint64[](4);
+        items[0] = HAMMER_ITEM;
+        items[1] = bytes24(0);
+        items[2] = bytes24(0);
+        items[3] = bytes24(0);
+        balances[0] = count;
+        balances[1] = 0;
+        balances[2] = 0;
+        balances[3] = 0;
+
+        ds.getDispatcher().dispatch(
+            abi.encodeCall(
+                Actions.DEV_SPAWN_BAG,
+                (
+                    z,
+                    q,
+                    r,
+                    s,
+                    uint8(0), // equip slot
+                    items,
+                    balances
+                )
+            )
+        );
+
     }
 
     function _assignUnitToTeam(Game ds, string memory team, uint64 teamLength, bytes24 unitID, bytes24 zoneID)
@@ -348,8 +396,8 @@ contract TurfWarsZone is ZoneKind, IZone {
 
     function onCombatStart(Game, /*ds*/ bytes24, /*zoneID*/ bytes24, /*mobileUnitID*/ bytes24 /*sessionID*/ )
         external
-        override
         pure
+        override
     {
         revert("Combat not supported in this zone");
     }

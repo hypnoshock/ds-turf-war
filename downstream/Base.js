@@ -43,10 +43,23 @@ export default async function update(state, block) {
 
   const claimWin = () => {
     const payload = ds.encodeCall("function claimWin()", []);
-    ds.dispatch({
-      name: "BUILDING_USE",
-      args: [selectedBuilding.id, mobileUnit.id, payload],
-    });
+    ds.dispatch(
+      {
+        name: "BUILDING_USE",
+        args: [selectedBuilding.id, mobileUnit.id, payload],
+      },
+      {
+        name: "TRANSFER_ITEM_MOBILE_UNIT",
+        args: [
+          mobileUnit.id,
+          [selectedBuilding.location.tile.id, mobileUnit.id],
+          [0, 0],
+          [0, 0],
+          nullBytes24,
+          1, // Claim hammer
+        ],
+      }
+    );
   };
 
   const joinBattle = () => {};

@@ -1,0 +1,9 @@
+kind: Item
+spec:
+  name: TW Hammer
+  icon: 22-170
+  goo:
+    red: 20
+    green: 20
+    blue: 20
+  stackable: true
