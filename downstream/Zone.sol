@@ -8,7 +8,7 @@ import {Schema, CombatWinState, Node, Q, R, S, BLOCK_TIME_SECS} from "@ds/schema
 import {ZoneKind} from "@ds/ext/ZoneKind.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {LibUtils} from "./LibUtils.sol";
-import {IZone} from "./IZone.sol";
+import {IZone, GAME_STATE} from "./IZone.sol";
 import "@ds/utils/LibString.sol";
 
 using Schema for State;
@@ -39,12 +39,6 @@ contract TurfWarsZone is ZoneKind, IZone {
     string constant DATA_GAME_DURATION_BLOCKS = "gameDurationBlocks";
     string constant DATA_START_BLOCK = "startBlock";
     string constant DATA_END_BLOCK = "endBlock";
-
-    enum GAME_STATE {
-        NOT_STARTED,
-        IN_PROGRESS,
-        FINISHED
-    }
 
     function use(Game ds, bytes24 zoneID, bytes24 mobileUnitID, bytes calldata payload) public override {
         State state = ds.getState();
@@ -361,6 +355,10 @@ contract TurfWarsZone is ZoneKind, IZone {
     }
 
     // -- Helpers
+
+    function getGameState(State state, bytes24 zoneID) external view returns (GAME_STATE) {
+        return _getGameState(state, zoneID);
+    }
 
     function _getGameState(State state, bytes24 zoneID) internal view returns (GAME_STATE) {
         GAME_STATE gameState = GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE)));

@@ -2,10 +2,11 @@ import ds from "downstream";
 
 const nullBytes24 = `0x${"00".repeat(24)}`;
 const nullBytes32 = `0x${"00".repeat(32)}`;
+const BLOCK_TIME_SECS = 2;
 const TEAM_A = "teamA";
 const TEAM_B = "teamB";
 
-export default async function update(state) {
+export default async function update(state, block) {
   //   const buildings = state.world?.buildings || [];
   const mobileUnit = getMobileUnit(state);
   const selectedTile = getSelectedTile(state);
@@ -78,6 +79,17 @@ export default async function update(state) {
     //   action: joinBattle,
     //   disabled: false,
     // });
+
+    // Show time until battle timesout
+    const timeoutBlock = getData(
+      selectedBuilding,
+      getTileMatchTimeoutBlockKey(selectedBuilding.location.tile.id)
+    );
+
+    const remainingBlocks = timeoutBlock > block ? timeoutBlock - block : 0;
+    const remainingTimeMs = remainingBlocks * BLOCK_TIME_SECS * 1000;
+
+    html += `<p>Time remaining until attacker can claim win by default</p><h3>${formatTime(remainingTimeMs)}</h3>`;
   }
 
   return {
@@ -186,10 +198,30 @@ function getBuildingOnTile(state, tile) {
   );
 }
 
+function formatTime(timeInMs) {
+  let seconds = Math.floor(timeInMs / 1000);
+  let minutes = Math.floor(seconds / 60);
+  let hours = Math.floor(minutes / 60);
+
+  seconds %= 60;
+  minutes %= 60;
+
+  // Pad each component to ensure two digits
+  let formattedHours = String(hours).padStart(2, "0");
+  let formattedMinutes = String(minutes).padStart(2, "0");
+  let formattedSeconds = String(seconds).padStart(2, "0");
+
+  return `${formattedMinutes}:${formattedSeconds}`;
+}
+
 // -- Match Data
 
 function getTileMatchKey(tileId) {
   return tileId + "_entityID";
+}
+
+function getTileMatchTimeoutBlockKey(tileId) {
+  return tileId + "_matchTimeoutBlock";
 }
 
 function getTileWinnerKey(tileId) {

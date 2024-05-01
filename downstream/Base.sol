@@ -10,7 +10,7 @@ import {IWorld} from "./IWorld.sol";
 import {LibString} from "./LibString.sol";
 import {LibUtils} from "./LibUtils.sol";
 import {ITurfWars} from "./ITurfWars.sol";
-import {IZone} from "./IZone.sol";
+import {IZone, GAME_STATE} from "./IZone.sol";
 import {IBase} from "./IBase.sol";
 
 using Schema for State;
@@ -90,12 +90,19 @@ contract Base is BuildingKind, IBase {
     function _startBattle(Game ds, bytes24 buildingInstance) internal {
         State state = ds.getState();
 
+        bytes24 tile = state.getFixedLocation(buildingInstance);
+        (int16 z, int16 q, int16 r, int16 s) = LibUtils.getTileCoords(tile);
+
+        bytes24 zoneID = Node.Zone(z);
+        IZone zoneImpl = IZone(state.getImplementation(zoneID));
+
+        require(zoneImpl.getGameState(state, zoneID) == GAME_STATE.IN_PROGRESS, "Base: Cannot start battle when game has ended");
+
         uint256 count = uint256(state.getData(buildingInstance, "count")) + 1;
         ds.getDispatcher().dispatch(
             abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, "count", bytes32(count)))
         );
-        bytes24 tile = state.getFixedLocation(buildingInstance);
-        (int16 z, int16 q, int16 r, int16 s) = LibUtils.getTileCoords(tile);
+
         string memory name = string(
             abi.encodePacked(
                 "TW_",
@@ -118,7 +125,7 @@ contract Base is BuildingKind, IBase {
         );
 
         ds.getDispatcher().dispatch(
-            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, LibUtils.getTileMatchStartBlock(tile), bytes32(block.number)))
+            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, LibUtils.getTileMatchTimeoutBlockKey(tile), bytes32(block.number + BATTLE_TIMEOUT_BLOCKS )))
         );
     }
 
@@ -137,7 +144,7 @@ contract Base is BuildingKind, IBase {
 
         // Enforce the claimer is the winner if the battle has ended
         // TODO: check if battle started rather than checking for winner
-        if (uint256(state.getData(buildingInstance, LibUtils.getTileMatchStartBlock(tile))) + BATTLE_TIMEOUT_BLOCKS > block.number || turfWars.getWinningPlayer(matchID) != bytes32(0)) {
+        if (uint256(state.getData(buildingInstance, LibUtils.getTileMatchTimeoutBlockKey(tile))) > block.number || turfWars.getWinningPlayer(matchID) != bytes32(0)) {
             require(turfWars.isAddressWinner(playerAddress, matchID), "Player is not the winner");
         }
 
