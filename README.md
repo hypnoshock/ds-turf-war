@@ -62,11 +62,13 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
   - [ ] Auto tile painting
   - [ ] Number of buildings you can construct
   - [ ] Allow construction of blockers
+  - [ ] Secure mode where placing building doesn't claim the tiles but allows the team to claim (doesn't override secured tiles from the other team)
 - [ ] Restrict construction to bases and blockers (if allowed)
+- [ ] Look into Sky Strife's private match system and see if we can prevent non TW players from joining
 - [ ] Don't allow battles to be started by non Turf Wars players
 - [ ] Don't allow battles to be started until the game starts
-- [ ] Tidy up empty bags
 - [ ] Orb to DS item bridge?
+- [x] Tidy up empty bags (the whole spawning bag, transferring item and destroying bag is probably VERY gassy)
 - [x] If placing a battle building down on an unoccupied tile, the player can gain that tile after a period of time of they are not challenged
 - [x] Raise cost of base building so you can only build 1 or 2
 - [x] Offset the map so 0, 0, 0 is where the Judge building is
@@ -80,3 +82,7 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 
 - [ ] Random spawn of powerups
   - [ ] Freeze opponents for x blocks
+- [ ] Placing a building down doesn't paint tiles, it just secures the area meaning the opposing team cannot paint there
+- [ ] Placing a building down in an area that was already painted another colour either:
+  - [ ] Colours tiles the team's colour
+  - [ ] Allows the team to start claiming tiles in that area

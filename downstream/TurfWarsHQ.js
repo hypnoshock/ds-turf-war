@@ -8,9 +8,12 @@ const STATE_IN_PROGRESS = 1;
 export default async function update(state) {
   const buildings = state.world?.buildings || [];
   const mobileUnit = getMobileUnit(state);
+  const selectedTile = getSelectedTile(state);
+  const selectedBuilding =
+    selectedTile && getBuildingOnTile(state, selectedTile);
 
   // Early out if no mobile unit
-  if (!mobileUnit) {
+  if (!mobileUnit || !selectedBuilding) {
     return {
       version: 1,
       components: [
@@ -61,13 +64,18 @@ export default async function update(state) {
     ds.dispatch(
       {
         name: "ZONE_USE",
-        args: [mobileUnit.id, ds.encodeCall("function join()", [])],
+        args: [
+          mobileUnit.id,
+          ds.encodeCall("function join(bytes24)", [
+            selectedBuilding.location.tile.id,
+          ]),
+        ],
       },
       {
         name: "TRANSFER_ITEM_MOBILE_UNIT",
         args: [
           mobileUnit.id,
-          [mobileUnit.nextLocation.tile.id, mobileUnit.id],
+          [selectedBuilding.location.tile.id, mobileUnit.id],
           [0, 0],
           [0, 0],
           nullBytes24,
@@ -77,6 +85,17 @@ export default async function update(state) {
       {
         name: "MOVE_MOBILE_UNIT",
         args: [mobileUnit.nextLocation.tile.coords[0], ...startLocation],
+      },
+      {
+        name: "ZONE_USE",
+        args: [
+          mobileUnit.id,
+          ds.encodeCall("function destroyTileBag(bytes24,bytes24,bytes24[])", [
+            selectedBuilding.location.tile.id,
+            generateDevBagId(selectedBuilding.location.tile),
+            [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
+          ]),
+        ],
       }
     );
   };
@@ -262,6 +281,36 @@ const getBuildingsByType = (buildingsArray, type) => {
 
 function getMobileUnit(state) {
   return state?.selected?.mobileUnit;
+}
+
+function getBuildingOnTile(state, tile) {
+  return (state?.world?.buildings || []).find(
+    (b) => tile && b.location?.tile?.id === tile.id
+  );
+}
+
+function getSelectedTile(state) {
+  const tiles = state?.selected?.tiles || {};
+  return tiles && tiles.length === 1 ? tiles[0] : undefined;
+}
+
+function generateDevBagId(tile, equipSlot = 0) {
+  // Generate the ID for the bag that will get created by the DEV_SPAWN_BAG action. We need this because
+  // I wanted to generate it on the contract side but contract was over size limit!!
+
+  // NOTE: the coords are encoded 2's complement int16's. If I tell the encoder they are int16 it will get an out of range error.
+  const [z, q, r, s] = tile.coords;
+  const bagKey256 = ds.keccak256(
+    ds.abiEncode(
+      ["string", "uint16", "uint16", "uint16", "uint16", "uint8"],
+      ["devbag", z, q, r, s, equipSlot]
+    )
+  );
+  // String manipulation instead of bitwise operations is icky but it works! :D
+  const bagKey64 = BigInt(`0x${bagKey256.slice(-16)}`).toString(16);
+
+  // Yes this is as horrendous as it looks
+  return "0xb1c93f09000000000000000000000000" + bagKey64;
 }
 
 // ---- Data functions ----

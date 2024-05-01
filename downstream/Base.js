@@ -43,6 +43,8 @@ export default async function update(state, block) {
 
   const claimWin = () => {
     const payload = ds.encodeCall("function claimWin()", []);
+    const bagID = generateDevBagId(selectedBuilding.location.tile);
+    console.log("bagID", bagID);
     ds.dispatch(
       {
         name: "BUILDING_USE",
@@ -57,6 +59,17 @@ export default async function update(state, block) {
           [0, 0],
           nullBytes24,
           1, // Claim hammer
+        ],
+      },
+      {
+        name: "ZONE_USE",
+        args: [
+          mobileUnit.id,
+          ds.encodeCall("function destroyTileBag(bytes24,bytes24,bytes24[])", [
+            selectedBuilding.location.tile.id,
+            bagID,
+            [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
+          ]),
         ],
       }
     );
@@ -227,6 +240,25 @@ function formatTime(timeInMs) {
   let formattedSeconds = String(seconds).padStart(2, "0");
 
   return `${formattedMinutes}:${formattedSeconds}`;
+}
+
+function generateDevBagId(tile, equipSlot = 0) {
+  // Generate the ID for the bag that will get created by the DEV_SPAWN_BAG action. We need this because
+  // I wanted to generate it on the contract side but contract was over size limit!!
+
+  // NOTE: the coords are encoded 2's complement int16's. If I tell the encoder they are int16 it will get an out of range error.
+  const [z, q, r, s] = tile.coords;
+  const bagKey256 = ds.keccak256(
+    ds.abiEncode(
+      ["string", "uint16", "uint16", "uint16", "uint16", "uint8"],
+      ["devbag", z, q, r, s, equipSlot]
+    )
+  );
+  // String manipulation instead of bitwise operations is icky but it works! :D
+  const bagKey64 = BigInt(`0x${bagKey256.slice(-16)}`).toString(16);
+
+  // Yes this is as horrendous as it looks
+  return "0xb1c93f09000000000000000000000000" + bagKey64;
 }
 
 // -- Match Data

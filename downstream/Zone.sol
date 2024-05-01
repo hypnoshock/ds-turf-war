@@ -14,10 +14,11 @@ import "@ds/utils/LibString.sol";
 using Schema for State;
 
 contract TurfWarsZone is ZoneKind, IZone {
-    function join() external {}
+    function join(bytes24 hqTileID) external {}
     function setReady() external {}
     function unsetReady() external {}
     function reset(bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings) external {}
+    function destroyTileBag(bytes24 tileID, bytes24 bagID, bytes24[] memory slotContents) external {}
     // function claim() external {}
 
     enum Team {
@@ -44,7 +45,8 @@ contract TurfWarsZone is ZoneKind, IZone {
     function use(Game ds, bytes24 zoneID, bytes24 mobileUnitID, bytes calldata payload) public override {
         State state = ds.getState();
         if ((bytes4)(payload) == this.join.selector) {
-            _join(ds, state, mobileUnitID, zoneID);
+            bytes24 hqTileID = abi.decode(payload[4:], (bytes24));
+            _join(ds, state, mobileUnitID, zoneID, hqTileID);
         } else if ((bytes4)(payload) == this.setReady.selector) {
             _setReady(ds, state, mobileUnitID, zoneID);
         } else if ((bytes4)(payload) == this.unsetReady.selector) {
@@ -53,6 +55,9 @@ contract TurfWarsZone is ZoneKind, IZone {
             (bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings) =
                 abi.decode(payload[4:], (bytes24[], bytes24[]));
             _reset(ds, state, zoneID, dirtyTiles, baseBuildings);
+        } else if ((bytes4)(payload) == this.destroyTileBag.selector) {
+            (bytes24 tileID, bytes24 bagID, bytes24[] memory slotContents) = abi.decode(payload[4:], (bytes24, bytes24, bytes24[]));
+            ds.getDispatcher().dispatch(abi.encodeCall(Actions.DEV_DESTROY_BAG, (bagID, address(0), tileID, uint8(0), slotContents)));
         } else {
             revert("TurfWarsZone: Invalid function signature");
         }
@@ -90,7 +95,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         }
 
         if (destroyBuilding) {
-            _spawnHammer(ds, state, origin, 1);
+            _spawnHammer(ds, origin, 1);
             ds.getDispatcher().dispatch(abi.encodeCall(Actions.DEV_DESTROY_BUILDING, (originZ, originQ, originR, originS)));
         }
     }
@@ -172,7 +177,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         _setDataOnZone(ds.getDispatcher(), zoneID, DATA_READY, bytes32(uint256(Team.NONE)));
     }
 
-    function _join(Game ds, State state, bytes24 unitID, bytes24 zoneID) private {
+    function _join(Game ds, State state, bytes24 unitID, bytes24 zoneID, bytes24 hqTileID) private {
         // check game not in progress
         if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) != GAME_STATE.NOT_STARTED) {
             revert("Cannot join game in progress");
@@ -195,19 +200,10 @@ contract TurfWarsZone is ZoneKind, IZone {
             zoneID
         );
 
-        _spawnHammer(ds, state, state.getCurrentLocation(unitID, uint64(block.number)), DEFAULT_HAMMER_COUNT);
+        _spawnHammer(ds, hqTileID, DEFAULT_HAMMER_COUNT);
     }
 
-    // TODO: base only
-    function spawnHammer(Game ds, State state, bytes24 tileID, uint64 count) public {
-        // get base kind
-        // get implementation
-        // require caller == implementation
-        
-        // _spawnHammer(ds, state, tileID, count);
-    }
-
-    function _spawnHammer(Game ds, State state, bytes24 tileID, uint64 count) private {
+    function _spawnHammer(Game ds, bytes24 tileID, uint64 count) private {
         (int16 z, int16 q, int16 r, int16 s) = getTileCoords(tileID);
 
         bytes24[] memory items = new bytes24[](4);
@@ -242,7 +238,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         internal
     {
         Dispatcher dispatcher = ds.getDispatcher();
-        // TODO: Do we need to keccak this?
+        // TODO: use enums instead of strings and get rid of keccak
         if (keccak256(abi.encodePacked(team)) == keccak256(abi.encodePacked(TEAM_A))) {
             _processTeam(dispatcher, zoneID, TEAM_A, teamLength, unitID);
         } else if (keccak256(abi.encodePacked(team)) == keccak256(abi.encodePacked(TEAM_B))) {
@@ -424,13 +420,6 @@ contract TurfWarsZone is ZoneKind, IZone {
         ds.getDispatcher().dispatch(
             abi.encodeCall(Actions.SET_DATA_ON_ZONE, (zoneID, LibUtils.getTileWinnerKey(tile), player))
         );
-    }
-
-    function _increment(Game ds, bytes24 zoneID, string memory name) internal {
-        State state = ds.getState();
-
-        uint256 count = uint256(state.getData(zoneID, name));
-        ds.getDispatcher().dispatch(abi.encodeCall(Actions.SET_DATA_ON_ZONE, (zoneID, name, bytes32(count + 1))));
     }
 
     function _setDataOnZone(Dispatcher dispatcher, bytes24 zoneID, string memory key, bytes32 value) internal {
