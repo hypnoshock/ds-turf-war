@@ -1,6 +1,8 @@
 import ds from "downstream";
 
 const nullBytes24 = `0x${"00".repeat(24)}`;
+const nullBytes32 = `0x${"00".repeat(32)}`;
+
 const TILE_ID_PREFIX = "0xe5a62ffc";
 const BLOCK_TIME_SECS = 2;
 const GAME_STATE_NOT_STARTED = 0;
@@ -9,13 +11,6 @@ const GAME_STATE_FINISHED = 2;
 const CLOCK_MSG = "Turf Wars ";
 const LEFT_COUNTER_MSG = "TURF WARS! ";
 const RIGHT_COUNTER_MSG = "_-`'´-";
-
-//COUNTING TILES
-const p1TileList = [];
-const p2TileList = [];
-
-let teamBCounter;
-let teamACounter;
 
 export default async function update(state, block) {
   const zone = state.world;
@@ -43,7 +38,7 @@ export default async function update(state, block) {
   // unit plugin properties - unit color
   const unitMapObj = [];
   for (let i = 0; i < teamALength; i++) {
-    const unitId = getTeamUnitAtIndex(zone, "TeamA", i);
+    const unitId = getTeamUnitAtIndex(zone, "teamA", i);
     const mobileUnit = state.world?.mobileUnits?.find(
       (unit) => unit.id === unitId
     );
@@ -60,7 +55,7 @@ export default async function update(state, block) {
   }
 
   for (let i = 0; i < teamBLength; i++) {
-    const unitId = getTeamUnitAtIndex(zone, "TeamB", i);
+    const unitId = getTeamUnitAtIndex(zone, "teamB", i);
     const mobileUnit = state.world?.mobileUnits?.find(
       (unit) => unit.id === unitId
     );
@@ -98,17 +93,6 @@ export default async function update(state, block) {
     )
   );
 
-  // check current game state:
-  // - NotStarted : GameActive == false
-  // - Running : GameActive == true && endBlock < currentBlock
-  // - GameOver : GameActive == true && endBlock >= currentBlock
-
-  // const blocksFromStart = nowBlock - startBlock;
-  // const timeSinceStartMs =
-  //   startBlock <= nowBlock
-  //     ? blocksFromStart * BLOCK_TIME_SECS * 1000
-  //     : countdownTotalTime;
-
   mapObj.push(
     getCountdownMapObj(
       state,
@@ -119,6 +103,24 @@ export default async function update(state, block) {
       remainingTimeMs,
       gameState
     )
+  );
+
+  // Change appearance of bases if there is a match waiting on them
+  mapObj.push(
+    ...getBuildingsByKind(state.world.buildings, "TW Base")
+      .filter((b) => {
+        const matchID = getData(b, getTileMatchKey(b.location.tile.id));
+
+        return matchID && matchID !== nullBytes32;
+      })
+      .map((b) => {
+        return {
+          type: "building",
+          id: b.id,
+          key: "model",
+          value: "1-1-1", // top-bottom-color. This puts a gun on top and paints it pink
+        };
+      })
   );
 
   return {
@@ -158,7 +160,7 @@ export default async function update(state, block) {
   };
 }
 
-// ------------------------------------------------------- Turf Wars helpers
+// ------------------------------------------------------- Turf Wars state
 
 function getTurfWarsState(state, block, zone) {
   if (!zone) {
@@ -259,8 +261,6 @@ function getCounterMapObj(
 
   if (!msg) msg = 0;
 
-  console.log(counterBuildingName, count);
-
   if (counterBuilding) {
     return {
       type: "building",
@@ -321,16 +321,6 @@ function getCountdownMapObj(
   }
 }
 
-// ---------------------------------- //
-
-const getBuildingsByType = (buildingsArray, type) => {
-  return buildingsArray.filter(
-    (building) =>
-      building.kind?.name?.value.toLowerCase().trim() ==
-      type.toLowerCase().trim()
-  );
-};
-
 function getTeamUnitAtIndex(zone, team, index) {
   return getDataBytes24(zone, `${team}Unit_${index}`);
 }
@@ -351,6 +341,20 @@ function formatTime(timeInMs) {
   return `${formattedMinutes}:${formattedSeconds}`;
 }
 
+function getTileMatchKey(tileId) {
+  return tileId + "_entityID";
+}
+
+// --- Helper functions
+
+const getBuildingsByKind = (buildingsArray, kind) => {
+  return buildingsArray.filter(
+    (building) =>
+      building.kind?.name?.value.toLowerCase().trim() ==
+      kind.toLowerCase().trim()
+  );
+};
+
 function getMobileUnitFeeSlot(state) {
   const mobileUnit = getMobileUnit(state);
   const mobileUnitBags = mobileUnit ? getEquipeeBags(state, mobileUnit) : [];
@@ -367,8 +371,6 @@ function getMobileUnitFeeSlot(state) {
   };
 }
 
-// --- Generic State helper functions
-
 function getMobileUnit(state) {
   return state?.selected?.mobileUnit;
 }
@@ -381,81 +383,6 @@ function getEquipeeBags(state, equipee) {
         (bag) => bag.equipee?.node.id === equipee.id
       )
     : [];
-}
-
-function logState(state) {
-  console.log("State sent to pluging:", state);
-}
-
-// get an array of buildings withiin 5 tiles of building
-function range5(state, building) {
-  const range = 5;
-  const tileCoords = getTileCoords(building?.location?.tile?.coords);
-  let i = 0;
-  const foundBuildings = [];
-  for (let q = tileCoords[0] - range; q <= tileCoords[0] + range; q++) {
-    for (let r = tileCoords[1] - range; r <= tileCoords[1] + range; r++) {
-      let s = -q - r;
-      let nextTile = [q, r, s];
-      if (distance(tileCoords, nextTile) <= range) {
-        state?.world?.buildings.forEach((b) => {
-          if (!b?.location?.tile?.coords) return;
-
-          const buildingCoords = getTileCoords(b.location.tile.coords);
-          if (
-            buildingCoords[0] == nextTile[0] &&
-            buildingCoords[1] == nextTile[1] &&
-            buildingCoords[2] == nextTile[2]
-          ) {
-            foundBuildings[i] = b;
-            i++;
-          }
-        });
-      }
-    }
-  }
-  return foundBuildings;
-}
-
-function hexToSignedDecimal(hex) {
-  if (hex.startsWith("0x")) {
-    hex = hex.substr(2);
-  }
-
-  let num = parseInt(hex, 16);
-  let bits = hex.length * 4;
-  let maxVal = Math.pow(2, bits);
-
-  // Check if the highest bit is set (negative number)
-  if (num >= maxVal / 2) {
-    num -= maxVal;
-  }
-
-  return num;
-}
-
-// Get tile coordinates from hexadecimal coordinates
-function getTileCoords(coords) {
-  return [
-    hexToSignedDecimal(coords[0]),
-    hexToSignedDecimal(coords[1]),
-    hexToSignedDecimal(coords[2]),
-    hexToSignedDecimal(coords[3]),
-  ];
-}
-
-function distance(tileCoords, nextTile) {
-  return Math.max(
-    Math.abs(tileCoords[0] - nextTile[0]),
-    Math.abs(tileCoords[1] - nextTile[1]),
-    Math.abs(tileCoords[2] - nextTile[2])
-  );
-}
-
-function getBuildingKindsByTileLocation(state, building, kindID) {
-  return (state?.world?.buildings || []).find(
-    (b) => b.id === building.id && b.kind?.name?.value == kindID
-  );
 }
 
 // get first slot in bags that matches item requirements
@@ -477,7 +404,7 @@ function findBagAndSlot(bags, requiredItemId, requiredBalance) {
   return { bag: null, slotKey: -1 };
 }
 
-// -- Building Data
+// -- Zone Data
 
 function getData(buildingInstance, key) {
   return getKVPs(buildingInstance)[key];
@@ -503,44 +430,4 @@ function getKVPs(buildingInstance) {
     kvps[data.name] = data.value;
     return kvps;
   }, {});
-}
-
-function getTileIdFromCoords(coords) {
-  const z = toInt16Hex(coords[0]);
-  const q = toInt16Hex(coords[1]);
-  const r = toInt16Hex(coords[2]);
-  const s = toInt16Hex(coords[3]);
-  return `${TILE_ID_PREFIX}000000000000000000000000${z}${q}${r}${s}`;
-}
-
-// Convert an integer to a 16-bit hexadecimal string
-function toInt16Hex(value) {
-  return ("0000" + toTwos(value, 16).toString(16)).slice(-4);
-}
-
-const BN_0 = BigInt(0);
-const BN_1 = BigInt(1);
-
-// Convert a two's complement binary representation to a BigInt
-function fromTwos(n, w) {
-  let value = BigInt(n);
-  let width = BigInt(w);
-  if (value >> (width - BN_1)) {
-    const mask = (BN_1 << width) - BN_1;
-    return -((~value & mask) + BN_1);
-  }
-  return value;
-}
-
-// Convert a BigInt to a two's complement binary representation
-function toTwos(_value, _width) {
-  let value = BigInt(_value);
-  let width = BigInt(_width);
-  const limit = BN_1 << (width - BN_1);
-  if (value < BN_0) {
-    value = -value;
-    const mask = (BN_1 << width) - BN_1;
-    return (~value & mask) + BN_1;
-  }
-  return value;
 }

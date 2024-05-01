@@ -30,7 +30,7 @@ contract TurfWarsZone is ZoneKind, IZone {
     string constant TEAM_B = "teamB";
 
     int16 constant DEFAULT_CLAIM_RANGE = 2;
-    uint64 constant DEFAULT_GAME_DURATION_BLOCKS = (2 * 60) / BLOCK_TIME_SECS;
+    uint64 constant DEFAULT_GAME_DURATION_BLOCKS = (15 * 60) / BLOCK_TIME_SECS;
 
     // Data keys
     string constant DATA_GAME_STATE = "gameState";

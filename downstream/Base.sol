@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Game} from "cog/IGame.sol";
 import {State} from "cog/IState.sol";
-import {Schema, Node, CompoundKeyDecoder} from "@ds/schema/Schema.sol";
+import {Schema, Node, CompoundKeyDecoder, BLOCK_TIME_SECS} from "@ds/schema/Schema.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {BuildingKind} from "@ds/ext/BuildingKind.sol";
 import {IWorld} from "./IWorld.sol";
@@ -19,10 +19,10 @@ contract Base is BuildingKind, IBase {
     bytes32 constant LEVEL_FOUR_PLAYER = 0x4361756c64726f6e2d3200000000000000000000000000000000000000000000;
     bytes32 constant LEVEL_KNIFE_FIGHT = 0x4b6e6966655f46696768745f3200000000000000000000000000000000000000;
     bytes32 constant LEVEL_ISLE = 0x5468652049736c65000000000000000000000000000000000000000000000000;
-
     bytes32 constant SELECTED_LEVEL = LEVEL_KNIFE_FIGHT;
-
     bytes32 constant HERO = 0x48616c6265726469657200000000000000000000000000000000000000000000;
+
+    uint256 constant BATTLE_TIMEOUT_BLOCKS = 15 / BLOCK_TIME_SECS;
 
     function startBattle() external {}
     function claimWin() external {}
@@ -113,9 +113,12 @@ contract Base is BuildingKind, IBase {
         require(address(turfWars) != address(0), "Base: TurfWars not set");
         turfWars.startBattle(name, firstMatchInWindow, matchID, SELECTED_LEVEL);
 
-        string memory tileMatchKey = LibUtils.getTileMatchKey(tile);
         ds.getDispatcher().dispatch(
-            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, tileMatchKey, matchID))
+            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, LibUtils.getTileMatchKey(tile), matchID))
+        );
+
+        ds.getDispatcher().dispatch(
+            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, LibUtils.getTileMatchStartBlock(tile), bytes32(block.number)))
         );
     }
 
@@ -132,7 +135,13 @@ contract Base is BuildingKind, IBase {
         bytes24 player = state.getOwner(actor);
         address playerAddress = state.getOwnerAddress(player);
 
-        require(turfWars.isAddressWinner(playerAddress, matchID), "Player is not the winner");
+        // Enforce the claimer is the winner if the battle has ended
+        // TODO: check if battle started rather than checking for winner
+        if (uint256(state.getData(buildingInstance, LibUtils.getTileMatchStartBlock(tile))) + BATTLE_TIMEOUT_BLOCKS > block.number || turfWars.getWinningPlayer(matchID) != bytes32(0)) {
+            require(turfWars.isAddressWinner(playerAddress, matchID), "Player is not the winner");
+        }
+
+        // TODO: Don't allow claiming if the tile already belongs to the claimer's team
 
         ds.getDispatcher().dispatch(
             abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, tileMatchKey, bytes32(0)))

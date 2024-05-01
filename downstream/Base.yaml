@@ -4,7 +4,7 @@ spec:
   category: custom
   name: TW Base
   description: Puts a base on the map to conquer an area
-  model: 99-99
+  model: 01-08
   color: 5
   contract:
     file: ./Base.sol

@@ -13,6 +13,10 @@ library LibUtils {
         return string(abi.encodePacked(LibString.toHexString(uint192(bytes24(tile)), 24), "_winner"));
     }
 
+    function getTileMatchStartBlock(bytes24 tile) internal pure returns (string memory) {
+        return string(abi.encodePacked(LibString.toHexString(uint192(bytes24(tile)), 24), "_matchStartBlock"));
+    }
+
     function getTileCoords(bytes24 tile) internal pure returns (int16 z, int16 q, int16 r, int16 s) {
         int16[4] memory keys = CompoundKeyDecoder.INT16_ARRAY(tile);
         return (keys[0], keys[1], keys[2], keys[3]);
