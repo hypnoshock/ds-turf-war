@@ -22,7 +22,7 @@ contract Base is BuildingKind, IBase {
     bytes32 constant SELECTED_LEVEL = LEVEL_KNIFE_FIGHT;
     bytes32 constant HERO = 0x48616c6265726469657200000000000000000000000000000000000000000000;
 
-    uint256 constant BATTLE_TIMEOUT_BLOCKS = 15 / BLOCK_TIME_SECS;
+    uint256 constant BATTLE_TIMEOUT_BLOCKS = 20 / BLOCK_TIME_SECS;
 
     function startBattle() external {}
     function claimWin() external {}

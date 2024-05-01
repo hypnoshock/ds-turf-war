@@ -45,7 +45,7 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 
 - [ ] Win state (Which side has the most tiles after the timer has run out)
 - [ ] Fix deploy script to work with Garnet
-  - [ ] Don't redeploy interim script
+  - [x] Don't redeploy interim script
   - [ ] Initial deploy of interim script to be done by zone contract
 - [ ] Raise cost of base building so you can only build 1 or 2
 - [ ] Choosing your team intead of being assigned a team
@@ -56,7 +56,12 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
   - [ ] Size of claimed area
   - [ ] Match length
   - [ ] Auto tile painting
+  - [ ] Number of buildings you can construct
+  - [ ] Allow construction of blockers
 - [ ] Eth and orb withdrawal on mediator contract
+- [ ] Restrict construction to bases and blockers (if allowed)
+- [ ] Random spawn of powerups
+  - [ ] Freeze opponents for x blocks
 - [x] Offset the map so 0, 0, 0 is where the Judge building is
 - [x] Restrict Battle building UI so it disables the 'Start Battle' button when there is a Sky Strife match waiting to be played on that tile
 - [x] After a match has started add a button to directly open the Sky Strife match: `http://localhost:1337/match?asPlayer=&useExternalWallet=&match={matchID}`
