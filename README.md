@@ -43,8 +43,13 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 
 ## To-do
 
+- [ ] Successfully defending your tower shouldn't destroy it (or maybe it should, can't decide if it's fun that you can relocate)
+- [ ] Don't allow the attacker to claim on timeout if the defender has joined the match
+- [ ] Search for item slot to deposit hammers
+- [ ] Don't allow join if player has hammers
+- [ ] Auto burn hammers on join
 - [ ] Win state (Which side has the most tiles after the timer has run out)
-- [ ] Successfully defending your tower shouldn't destroy it
+- [ ] Prize pool (orbs?)
 - [ ] Eth and orb withdrawal on mediator contract
 - [ ] Fix deploy script to work with Garnet
   - [x] Don't redeploy interim script
@@ -60,6 +65,8 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 - [ ] Restrict construction to bases and blockers (if allowed)
 - [ ] Don't allow battles to be started by non Turf Wars players
 - [ ] Don't allow battles to be started until the game starts
+- [ ] Tidy up empty bags
+- [ ] Orb to DS item bridge?
 - [x] If placing a battle building down on an unoccupied tile, the player can gain that tile after a period of time of they are not challenged
 - [x] Raise cost of base building so you can only build 1 or 2
 - [x] Offset the map so 0, 0, 0 is where the Judge building is
