@@ -35,6 +35,18 @@ contract InitTurfWars is Script {
         State state = ds.getState();
         int16 zoneKey = int16(vm.envInt("DS_ZONE"));
 
+        string memory dsNetwork = vm.envString("DS_NETWORK");
+        string memory deployInfoPath = string(abi.encodePacked("./out/deploy-", dsNetwork, ".json"));
+        string memory deployJson;
+
+        TurfWars turfWars;
+
+        // Get existing TurfWars contract
+        if (vm.exists(deployInfoPath)) {
+            deployJson = vm.readFile(deployInfoPath);
+            turfWars = TurfWars(payable(vm.parseJsonAddress(deployJson, ".turfWars")));
+        }
+
         IWorld world = IWorld(vm.envAddress("SS_GAME_ADDR"));
         StoreSwitch.setStoreAddress(address(world));
 
@@ -43,8 +55,7 @@ contract InitTurfWars is Script {
         console.log("Orb Token Address: %s", address(orbToken));
 
         // Base building handle
-        bytes24 baseBuildingKind = Node.BuildingKind("TW Base", BuildingCategory.CUSTOM);
-        IBase baseBuilding = IBase(address(state.getImplementation(baseBuildingKind)));
+        IBase baseBuilding = IBase(address(state.getImplementation(Node.BuildingKind("TW Base", BuildingCategory.CUSTOM))));
         require(address(baseBuilding) != address(0), "Base Building not found");
         console.log("Base Building Address: %s", address(baseBuilding));
 
@@ -58,21 +69,39 @@ contract InitTurfWars is Script {
         // -- Downstream
         vm.startBroadcast(dsDeployKey);
 
-        TurfWars turfWars = (new TurfWars){value: 0.05 ether}(ds, world, orbToken, baseBuilding, zoneImpl);
-        console.log("TurfWars balance: %s", address(turfWars).balance);
+        // Deploy TurfWars contract if it hasn't been deployed before
 
-        baseBuilding.init(dsDeployAddr, address(world), address(turfWars), firstMatchInWindow);
+        if (address(turfWars) == address(0)) {
+            console.log("Deploying TurfWars contract");
+            turfWars = (new TurfWars){value: 0.05 ether}(ds, world, orbToken, baseBuilding, zoneImpl);
+        } else {
+            console.log("Skipping deploy of TurfWars contract. Already deployed.");
+        }
+        // console.log("TurfWars balance: %s", address(turfWars).balance);
 
-        vm.stopBroadcast();
+        // baseBuilding.init(dsDeployAddr, address(world), address(turfWars), firstMatchInWindow);
 
-        // -- Sky Strife
-        vm.startBroadcast(ssDeployKey);
-        orbToken.mint(address(turfWars), 10_000 ether);
-        orbToken.mint(address(ssDeployAddr), 10_000 ether);
+        // vm.stopBroadcast();
 
-        // On Redstone cannot mind obviously so transfer from deployer
-        //orbToken.transfer(address(turfWars), 500 ether);
+        // // -- Sky Strife
+        // vm.startBroadcast(ssDeployKey);
+        // orbToken.mint(address(turfWars), 10_000 ether);
+        // orbToken.mint(address(ssDeployAddr), 10_000 ether);
 
-        vm.stopBroadcast();
+        // // On Redstone cannot mint obviously so transfer from deployer
+        // //orbToken.transfer(address(turfWars), 500 ether);
+
+        // vm.stopBroadcast();
+
+        // // -- Write deploy info
+        // // https://book.getfoundry.sh/cheatcodes/serialize-json
+        // string memory o = "key";
+        // vm.serializeAddress(o, "orbToken", address(orbToken));
+        // vm.serializeBytes32(o, "firstMatchInWindow", firstMatchInWindow);
+        // vm.serializeAddress(o, "turfWars", address(turfWars));
+        
+        // deployJson = vm.serializeAddress(o, "zoneImpl", address(zoneImpl));
+        
+        // vm.writeJson(deployJson, deployInfoPath);
     }
 }
