@@ -53,22 +53,24 @@ export default async function update(state, block) {
 
   let html = ``;
   const buttons = [];
-  if (playerTeam != tileTeam) {
-    if (!matchID || matchID === nullBytes32) {
+  if (!matchID || matchID === nullBytes32) {
+    if (playerTeam != tileTeam) {
       buttons.push({
         text: "Start Battle",
         type: "action",
         action: startBattle,
         disabled: false,
       });
-    } else {
-      buttons.push({
-        text: "Claim Win",
-        type: "action",
-        action: claimWin,
-        disabled: false,
-      });
     }
+  } else {
+    // NOTE: We have to always show the claim button even when the match hasn't been played
+    // as the match status isn't indexed on the DS graph
+    buttons.push({
+      text: "Claim Win",
+      type: "action",
+      action: claimWin,
+      disabled: false,
+    });
   }
 
   if (matchID && matchID !== nullBytes32) {
