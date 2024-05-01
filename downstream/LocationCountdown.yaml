@@ -7,5 +7,5 @@ spec:
 ---
 kind: Building
 spec:
-  name: Countdown Building
+  name: TWCountdown
   location: [3, -6, 3]

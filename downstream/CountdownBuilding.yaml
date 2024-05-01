@@ -1,7 +1,7 @@
 ---
 kind: BuildingKind
 spec:
-  name: Countdown Building
+  name: TWCountdown
   description: "Countdown something!"
   category: display
   model: countdown

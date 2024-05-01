@@ -18,7 +18,7 @@ export default async function update(state) {
             {
               id: "default",
               type: "inline",
-              html: `<h3>Turf Wars HQ</h3><p>Select your mobile unit to interact with this building</p>`,
+              html: `<p>Select your mobile unit to interact with this building</p>`,
             },
           ],
         },

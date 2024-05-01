@@ -51,12 +51,12 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 - [ ] Choosing your team intead of being assigned a team
 - [ ] Don't allow battles to be started by non Turf Wars players
 - [ ] Don't allow battles to be started until the game starts
-- [ ] If placing a battle building down on an unoccupied tile, the player can gain that tile after a period of time of they are not challenged
+- [x] If placing a battle building down on an unoccupied tile, the player can gain that tile after a period of time of they are not challenged
 - [ ] Configurable matches
   - [ ] Size of claimed area
   - [ ] Match length
   - [ ] Auto tile painting
-- Eth and orb withdrawal on interim contract
+- [ ] Eth and orb withdrawal on mediator contract
 - [x] Offset the map so 0, 0, 0 is where the Judge building is
 - [x] Restrict Battle building UI so it disables the 'Start Battle' button when there is a Sky Strife match waiting to be played on that tile
 - [x] After a match has started add a button to directly open the Sky Strife match: `http://localhost:1337/match?asPlayer=&useExternalWallet=&match={matchID}`

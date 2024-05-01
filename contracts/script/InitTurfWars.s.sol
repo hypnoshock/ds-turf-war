@@ -26,10 +26,6 @@ contract InitTurfWars is Script {
     function setUp() public {}
 
     function run() public {
-        uint256 dsDeployKey = vm.envUint("DS_DEPLOY_KEY");
-        uint256 ssDeployKey = vm.envUint("SS_DEPLOY_KEY");
-        address ssDeployAddr = vm.addr(ssDeployKey);
-
         Game ds = Game(vm.envAddress("DS_GAME_ADDR"));
         State state = ds.getState();
         int16 zoneKey = int16(vm.envInt("DS_ZONE"));
@@ -59,7 +55,8 @@ contract InitTurfWars is Script {
         IZone zoneImpl = IZone(address(state.getImplementation(Node.Zone(zoneKey))));
         require(address(zoneImpl) != address(0), "Zone implementation not found");
 
-        // -- Downstream
+        // ---- Downstream
+        uint256 dsDeployKey = vm.envUint("DS_DEPLOY_KEY");
         vm.startBroadcast(dsDeployKey);
 
         // Deploy TurfWars contract if it hasn't been deployed before
@@ -70,23 +67,26 @@ contract InitTurfWars is Script {
         } else {
             console.log("Skipping deploy of TurfWars contract. Already deployed.");
         }
-        console.log("TurfWars balance: %s", address(turfWars).balance);
-
+        
         {
             bytes32 firstMatchInWindow = Helper.findFirstMatchInWindow(SkyPoolConfig.getWindow());
             require(firstMatchInWindow != 0, "No match found in window");
             console.log("First Match in Window: %x", uint32(uint256(firstMatchInWindow >> 224)));
 
             address dsDeployAddr = vm.addr(dsDeployKey);
+
+            // TODO: Don't reinit if addresses etc are the same
             baseBuilding.init(dsDeployAddr, address(world), address(turfWars), firstMatchInWindow);
         }
 
         vm.stopBroadcast();
 
-        // // -- Sky Strife
+        // ---- Sky Strife
+        uint256 ssDeployKey = vm.envUint("SS_DEPLOY_KEY");
         vm.startBroadcast(ssDeployKey);
 
         if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256(abi.encodePacked("local"))) {
+            address ssDeployAddr = vm.addr(ssDeployKey);
             console.log("Minting 10k ORB for TurfWars and SS deployer");
             orbToken.mint(address(turfWars), 10_000 ether);
             orbToken.mint(address(ssDeployAddr), 10_000 ether);
@@ -95,6 +95,7 @@ contract InitTurfWars is Script {
             // Top up the TurfWars contract with 500 ORB
             //orbToken.transfer(address(turfWars), 500 ether);
         }
+        console.log("TurfWars balance: %s", address(turfWars).balance);
 
         vm.stopBroadcast();
 

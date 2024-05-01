@@ -76,7 +76,7 @@ export default async function update(state, block) {
       state,
       block,
       gameState,
-      "TeamACounterDisplay",
+      "TWTeamA Counter",
       teamAScore,
       LEFT_COUNTER_MSG
     )
@@ -87,7 +87,7 @@ export default async function update(state, block) {
       state,
       block,
       gameState,
-      "TeamBCounterDisplay",
+      "TWTeamB Counter",
       teamBScore,
       RIGHT_COUNTER_MSG
     )
@@ -97,7 +97,7 @@ export default async function update(state, block) {
     getCountdownMapObj(
       state,
       block,
-      "Countdown Building",
+      "TWCountdown",
       teamALength,
       teamBLength,
       remainingTimeMs,

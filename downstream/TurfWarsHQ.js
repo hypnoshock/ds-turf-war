@@ -149,7 +149,7 @@ export default async function update(state) {
           {
             id: "default",
             type: "inline",
-            html: `<h2>Turf Wars HQ</h2>`,
+            html: ``,
             buttons,
           },
         ],
