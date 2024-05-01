@@ -554,13 +554,13 @@ spec:
 ---
 kind: Building
 spec:
-  name: TWTeamA Counter
+  name: TW TeamA Counter
   location: [-5, 0, 5]
 
 ---
 kind: Building
 spec:
-  name: TWTeamB Counter
+  name: TW TeamB Counter
   location: [5, 0, -5]
   facingDirection: LEFT
 

@@ -1,7 +1,7 @@
 ---
 kind: BuildingKind
 spec:
-  name: TWTeamB Counter
+  name: TW TeamB Counter
   description: "This building displays the current count of Team B's turf"
   category: display
   model: default
