@@ -27,7 +27,6 @@ contract InitTurfWars is Script {
 
     function run() public {
         uint256 dsDeployKey = vm.envUint("DS_DEPLOY_KEY");
-        address dsDeployAddr = vm.addr(dsDeployKey);
         uint256 ssDeployKey = vm.envUint("SS_DEPLOY_KEY");
         address ssDeployAddr = vm.addr(ssDeployKey);
 
@@ -35,15 +34,13 @@ contract InitTurfWars is Script {
         State state = ds.getState();
         int16 zoneKey = int16(vm.envInt("DS_ZONE"));
 
-        string memory dsNetwork = vm.envString("DS_NETWORK");
-        string memory deployInfoPath = string(abi.encodePacked("./out/deploy-", dsNetwork, ".json"));
-        string memory deployJson;
+        string memory deployInfoPath = string(abi.encodePacked("./out/deploy-", vm.envString("DS_NETWORK"), ".json"));
 
         TurfWars turfWars;
 
         // Get existing TurfWars contract
         if (vm.exists(deployInfoPath)) {
-            deployJson = vm.readFile(deployInfoPath);
+            string memory deployJson = vm.readFile(deployInfoPath);
             turfWars = TurfWars(payable(vm.parseJsonAddress(deployJson, ".turfWars")));
         }
 
@@ -59,10 +56,6 @@ contract InitTurfWars is Script {
         require(address(baseBuilding) != address(0), "Base Building not found");
         console.log("Base Building Address: %s", address(baseBuilding));
 
-        bytes32 firstMatchInWindow = Helper.findFirstMatchInWindow(SkyPoolConfig.getWindow());
-        require(firstMatchInWindow != 0, "No match found in window");
-        console.log("First Match in Window: %x", uint32(uint256(firstMatchInWindow >> 224)));
-
         IZone zoneImpl = IZone(address(state.getImplementation(Node.Zone(zoneKey))));
         require(address(zoneImpl) != address(0), "Zone implementation not found");
 
@@ -77,31 +70,43 @@ contract InitTurfWars is Script {
         } else {
             console.log("Skipping deploy of TurfWars contract. Already deployed.");
         }
-        // console.log("TurfWars balance: %s", address(turfWars).balance);
+        console.log("TurfWars balance: %s", address(turfWars).balance);
 
-        // baseBuilding.init(dsDeployAddr, address(world), address(turfWars), firstMatchInWindow);
+        {
+            bytes32 firstMatchInWindow = Helper.findFirstMatchInWindow(SkyPoolConfig.getWindow());
+            require(firstMatchInWindow != 0, "No match found in window");
+            console.log("First Match in Window: %x", uint32(uint256(firstMatchInWindow >> 224)));
 
-        // vm.stopBroadcast();
+            address dsDeployAddr = vm.addr(dsDeployKey);
+            baseBuilding.init(dsDeployAddr, address(world), address(turfWars), firstMatchInWindow);
+        }
+
+        vm.stopBroadcast();
 
         // // -- Sky Strife
-        // vm.startBroadcast(ssDeployKey);
-        // orbToken.mint(address(turfWars), 10_000 ether);
-        // orbToken.mint(address(ssDeployAddr), 10_000 ether);
+        vm.startBroadcast(ssDeployKey);
 
-        // // On Redstone cannot mint obviously so transfer from deployer
-        // //orbToken.transfer(address(turfWars), 500 ether);
+        if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256(abi.encodePacked("local"))) {
+            console.log("Minting 10k ORB for TurfWars and SS deployer");
+            orbToken.mint(address(turfWars), 10_000 ether);
+            orbToken.mint(address(ssDeployAddr), 10_000 ether);
+        } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256(abi.encodePacked("garnet"))) {
+            console.log("Topping up TurfWars contract with orbs");
+            // Top up the TurfWars contract with 500 ORB
+            //orbToken.transfer(address(turfWars), 500 ether);
+        }
 
-        // vm.stopBroadcast();
+        vm.stopBroadcast();
 
-        // // -- Write deploy info
-        // // https://book.getfoundry.sh/cheatcodes/serialize-json
-        // string memory o = "key";
-        // vm.serializeAddress(o, "orbToken", address(orbToken));
+        // -- Write deploy info
+        // https://book.getfoundry.sh/cheatcodes/serialize-json
+        string memory o = "key";
+        vm.serializeAddress(o, "orbToken", address(orbToken));
         // vm.serializeBytes32(o, "firstMatchInWindow", firstMatchInWindow);
-        // vm.serializeAddress(o, "turfWars", address(turfWars));
+        vm.serializeAddress(o, "turfWars", address(turfWars));
         
-        // deployJson = vm.serializeAddress(o, "zoneImpl", address(zoneImpl));
+        string memory newDeployJson = vm.serializeAddress(o, "zoneImpl", address(zoneImpl));
         
-        // vm.writeJson(deployJson, deployInfoPath);
+        vm.writeJson(newDeployJson, deployInfoPath);
     }
 }
