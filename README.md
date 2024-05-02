@@ -54,7 +54,6 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 - [ ] Fix deploy script to work with Garnet
   - [x] Don't redeploy interim script
   - [ ] Initial deploy of interim script to be done by zone contract
-  - [ ] Buying season passes all a bit sketchy
 - [ ] Choosing your team instead of being assigned a team
 - [ ] Configurable matches
   - [ ] Size of claimed area
@@ -65,8 +64,10 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
   - [ ] Secure mode where placing building doesn't claim the tiles but allows the team to claim (doesn't override secured tiles from the other team)
 - [ ] Restrict construction to bases and blockers (if allowed)
 - [ ] Look into Sky Strife's private match system and see if we can prevent non TW players from joining
-- [ ] Don't allow battles to be started by non Turf Wars players
-- [ ] Don't allow battles to be started until the game starts
+- [ ] Finish TurfWars contract
+  - [ ] Don't allow battles to be started by non Turf Wars players
+  - [ ] Don't allow battles to be started until the game starts
+  - [ ] Deploy script to update building and zone impl addresses if they have changed
 - [ ] Orb to DS item bridge?
 - [x] Tidy up empty bags (the whole spawning bag, transferring item and destroying bag is probably VERY gassy)
 - [x] If placing a battle building down on an unoccupied tile, the player can gain that tile after a period of time of they are not challenged
@@ -86,3 +87,7 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 - [ ] Placing a building down in an area that was already painted another colour either:
   - [ ] Colours tiles the team's colour
   - [ ] Allows the team to start claiming tiles in that area
+
+## Problems
+
+- The first match in window can't be worked out in the DS client because we don't have ability to make contract calls. Presently I'm finding this match during deployment and setting it on the building contract.

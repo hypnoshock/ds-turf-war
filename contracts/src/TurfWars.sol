@@ -31,6 +31,9 @@ contract TurfWars is ITurfWars {
         zoneImpl = _zoneImpl;
 
         StoreSwitch.setStoreAddress(address(world));
+    }
+
+    function buySeasonPass() public payable {
         world.buySeasonPass{value: msg.value}(address(this));
     }
 

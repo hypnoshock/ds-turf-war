@@ -40,12 +40,19 @@ contract InitTurfWars is Script {
             turfWars = TurfWars(payable(vm.parseJsonAddress(deployJson, ".turfWars")));
         }
 
+        console.log("Setting Sky Strife world address");
         IWorld world = IWorld(vm.envAddress("SS_GAME_ADDR"));
         StoreSwitch.setStoreAddress(address(world));
 
         // Get the orb token address
+        console.log("Getting Orb Token Address");
         IERC20Mintable orbToken = IERC20Mintable(SkyPoolConfig.getOrbToken());
         console.log("Orb Token Address: %s", address(orbToken));
+        {
+            address ssDeployAddr = vm.addr(vm.envUint("SS_DEPLOY_KEY"));
+            uint256 deployerOrbBal = orbToken.balanceOf(ssDeployAddr);
+            console.log("Deployer orbs: %s", deployerOrbBal); // 10 ** 18
+        }
 
         // Base building handle
         IBase baseBuilding = IBase(address(state.getImplementation(Node.BuildingKind("TW Base", BuildingCategory.CUSTOM))));
@@ -63,9 +70,19 @@ contract InitTurfWars is Script {
 
         if (address(turfWars) == address(0)) {
             console.log("Deploying TurfWars contract");
-            turfWars = (new TurfWars){value: 0.05 ether}(ds, world, orbToken, baseBuilding, zoneImpl);
+            turfWars = new TurfWars(ds, world, orbToken, baseBuilding, zoneImpl);
+
+            if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256(abi.encodePacked("local"))) {
+                turfWars.buySeasonPass{value: 0.05 ether}();
+            } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256(abi.encodePacked("garnet"))) {
+                // -- Cannot buy pass on Garnet as minting period is over
+                console.log("Skipping buySeasonPass on Garnet");
+                // turfWars.buySeasonPass{value: 0.03 ether}();
+            }
+
         } else {
             console.log("Skipping deploy of TurfWars contract. Already deployed.");
+            // TODO: Update baseBuilding / zoneImpl on turfWars contract if changed
         }
         
         {
@@ -95,7 +112,7 @@ contract InitTurfWars is Script {
             // Top up the TurfWars contract with 500 ORB
             //orbToken.transfer(address(turfWars), 500 ether);
         }
-        console.log("TurfWars balance: %s", address(turfWars).balance);
+        console.log("TurfWars ETH balance: %s", address(turfWars).balance);
 
         vm.stopBroadcast();
 
