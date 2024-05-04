@@ -80,6 +80,11 @@ contract InitTurfWars is Script {
                 vm.stopBroadcast();
             }
         }
+
+        // TODO: Check if turfwars has season pass before buying
+        if (false) {
+            buySeasonPass(turfWars);
+        }
         
         {
             bytes32 firstMatchInWindow = Helper.findFirstMatchInWindow(SkyPoolConfig.getWindow());
@@ -96,16 +101,19 @@ contract InitTurfWars is Script {
             } else {
                 console.log("Base Building already initialized - Updating any changes");
                 if (address(baseBuilding.world()) != address(world)) {
+                    console.log("Updating world address on Base Building");
                     vm.startBroadcast(dsDeployKey);
                     baseBuilding.setSkyStrifeWorld(address(world));
                     vm.stopBroadcast();
                 }
                 if (address(baseBuilding.turfWars()) != address(turfWars)) {
+                    console.log("Updating TurfWars address on Base Building");
                     vm.startBroadcast(dsDeployKey);
                     baseBuilding.setTurfWars(address(turfWars));
                     vm.stopBroadcast();
                 }
                 if (baseBuilding.firstMatchInWindow() != firstMatchInWindow) {
+                    console.log("Updating firstMatchInWindow on Base Building");
                     vm.startBroadcast(dsDeployKey);
                     baseBuilding.setFirstMatchInWindow(firstMatchInWindow);
                     vm.stopBroadcast();
@@ -162,9 +170,15 @@ contract InitTurfWars is Script {
         console.log("Deploying TurfWars contract");
         TurfWars turfWarsImpl = new TurfWars();
         TurfWars turfWars = TurfWars(payable(new ERC1967Proxy(address(turfWarsImpl), "")));
-        turfWars.initialize();
-        turfWars.init(ds, world, orbToken, baseBuilding);
+        turfWars.initialize(ds, world, orbToken, baseBuilding);
+        vm.stopBroadcast();
 
+        return turfWars;
+    }
+
+    function buySeasonPass(TurfWars turfWars) public {
+        console.log("Buying Season Pass");
+        vm.startBroadcast(vm.envUint("DS_DEPLOY_KEY"));
         if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("local")) {
             turfWars.buySeasonPass{value: 0.05 ether}();
         } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("garnet")) {
@@ -176,7 +190,5 @@ contract InitTurfWars is Script {
             turfWars.buySeasonPass{value: 0.03 ether}();
         }
         vm.stopBroadcast();
-
-        return turfWars;
     }
 }

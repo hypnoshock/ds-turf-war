@@ -34,13 +34,10 @@ contract TurfWars is ITurfWars, Initializable, OwnableUpgradeable, UUPSUpgradeab
         _disableInitializers();
     }
 
-    function initialize() public initializer {
+    function initialize(Game _ds, IWorld _world, IERC20Mintable _orbToken, IBase _baseBuilding) public initializer {
         __Ownable_init(); //sets owner to msg.sender
         __UUPSUpgradeable_init();
-    }
 
-    // TODO: make part of initialize if possible
-    function init(Game _ds, IWorld _world, IERC20Mintable _orbToken, IBase _baseBuilding) public onlyOwner {
         ds = _ds;
         world = _world;
         orbToken = _orbToken;

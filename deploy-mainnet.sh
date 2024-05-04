@@ -11,5 +11,5 @@ ROOT=$(pwd)
 
 cd $ROOT/contracts
 
-# forge script --rpc-url $RPC_URL --broadcast -vvv script/InitTurfWars.s.sol
-forge script --rpc-url $RPC_URL -vvv script/InitTurfWars.s.sol
+forge script --rpc-url $RPC_URL --broadcast -vvv script/InitTurfWars.s.sol
+# forge script --rpc-url $RPC_URL -vvv script/InitTurfWars.s.sol
