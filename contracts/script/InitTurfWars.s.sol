@@ -71,10 +71,14 @@ contract InitTurfWars is Script {
         // Deploy TurfWars contract if it hasn't been deployed before
 
         if (address(turfWars) == address(0)) {
-            turfWars = deployTurfWars(ds, world, orbToken, baseBuilding, zoneImpl);
+            turfWars = deployTurfWars(ds, world, orbToken, baseBuilding);
         } else {
             console.log("Skipping deploy of TurfWars contract. Already deployed.");
-            // TODO: Update baseBuilding / zoneImpl on turfWars contract if changed
+            if (address(turfWars.baseBuilding()) != address(baseBuilding)) {
+                vm.startBroadcast(dsDeployKey);
+                turfWars.setBaseBuilding(baseBuilding);
+                vm.stopBroadcast();
+            }
         }
         
         {
@@ -153,13 +157,13 @@ contract InitTurfWars is Script {
         vm.writeJson(newDeployJson, deployInfoPath);
     }
 
-    function deployTurfWars(Game ds, IWorld world, IERC20Mintable orbToken, IBase baseBuilding, IZone zoneImpl) public returns (TurfWars) {
+    function deployTurfWars(Game ds, IWorld world, IERC20Mintable orbToken, IBase baseBuilding) public returns (TurfWars) {
         vm.startBroadcast(vm.envUint("DS_DEPLOY_KEY"));
         console.log("Deploying TurfWars contract");
         TurfWars turfWarsImpl = new TurfWars();
         TurfWars turfWars = TurfWars(payable(new ERC1967Proxy(address(turfWarsImpl), "")));
         turfWars.initialize();
-        turfWars.init(ds, world, orbToken, baseBuilding, zoneImpl);
+        turfWars.init(ds, world, orbToken, baseBuilding);
 
         if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("local")) {
             turfWars.buySeasonPass{value: 0.05 ether}();
@@ -167,10 +171,9 @@ contract InitTurfWars is Script {
             // -- Cannot buy pass on Garnet as minting period is over
             console.log("Skipping buySeasonPass on Garnet");
             // turfWars.buySeasonPass{value: 0.03 ether}();
-        } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("garnet")) {
-            // -- Cannot buy pass on Garnet as minting period is over
-            console.log("Skipping buySeasonPass on Mainnet");
-            // turfWars.buySeasonPass{value: 0.03 ether}();
+        } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("redstone")) {
+            console.log("Buying buySeasonPass on Mainnet");
+            turfWars.buySeasonPass{value: 0.03 ether}();
         }
         vm.stopBroadcast();
 

@@ -20,7 +20,6 @@ contract TurfWars is ITurfWars, Initializable, OwnableUpgradeable, UUPSUpgradeab
     IWorld public world;
     IERC20Mintable public orbToken;
     IBase public baseBuilding;
-    IZone public zoneImpl;
 
     // -- Might need these if I have to buy the season pass from this contract
     fallback() external payable {}
@@ -41,14 +40,17 @@ contract TurfWars is ITurfWars, Initializable, OwnableUpgradeable, UUPSUpgradeab
     }
 
     // TODO: make part of initialize if possible
-    function init(Game _ds, IWorld _world, IERC20Mintable _orbToken, IBase _baseBuilding, IZone _zoneImpl) public onlyOwner {
+    function init(Game _ds, IWorld _world, IERC20Mintable _orbToken, IBase _baseBuilding) public onlyOwner {
         ds = _ds;
         world = _world;
         orbToken = _orbToken;
         baseBuilding = _baseBuilding;
-        zoneImpl = _zoneImpl;
 
         StoreSwitch.setStoreAddress(address(world));
+    }
+
+    function setBaseBuilding(IBase _baseBuilding) public onlyOwner {
+        baseBuilding = _baseBuilding;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
