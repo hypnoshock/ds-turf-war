@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Script, console} from "forge-std/Script.sol";
 import "forge-std/console.sol";
 import {IERC20Mintable} from "@latticexyz/world-modules/src/modules/erc20-puppet/IERC20Mintable.sol";
@@ -70,22 +71,7 @@ contract InitTurfWars is Script {
         // Deploy TurfWars contract if it hasn't been deployed before
 
         if (address(turfWars) == address(0)) {
-            vm.startBroadcast(dsDeployKey);
-            console.log("Deploying TurfWars contract");
-            turfWars = new TurfWars(ds, world, orbToken, baseBuilding, zoneImpl);
-            if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256(abi.encodePacked("local"))) {
-                turfWars.buySeasonPass{value: 0.05 ether}();
-            } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256(abi.encodePacked("garnet"))) {
-                // -- Cannot buy pass on Garnet as minting period is over
-                console.log("Skipping buySeasonPass on Garnet");
-                // turfWars.buySeasonPass{value: 0.03 ether}();
-            } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256(abi.encodePacked("garnet"))) {
-                // -- Cannot buy pass on Garnet as minting period is over
-                console.log("Skipping buySeasonPass on Mainnet");
-                // turfWars.buySeasonPass{value: 0.03 ether}();
-            }
-            vm.stopBroadcast();
-
+            turfWars = deployTurfWars(ds, world, orbToken, baseBuilding, zoneImpl);
         } else {
             console.log("Skipping deploy of TurfWars contract. Already deployed.");
             // TODO: Update baseBuilding / zoneImpl on turfWars contract if changed
@@ -165,5 +151,29 @@ contract InitTurfWars is Script {
         string memory newDeployJson = vm.serializeAddress(o, "zoneImpl", address(zoneImpl));
         
         vm.writeJson(newDeployJson, deployInfoPath);
+    }
+
+    function deployTurfWars(Game ds, IWorld world, IERC20Mintable orbToken, IBase baseBuilding, IZone zoneImpl) public returns (TurfWars) {
+        vm.startBroadcast(vm.envUint("DS_DEPLOY_KEY"));
+        console.log("Deploying TurfWars contract");
+        TurfWars turfWarsImpl = new TurfWars();
+        TurfWars turfWars = TurfWars(payable(new ERC1967Proxy(address(turfWarsImpl), "")));
+        turfWars.initialize();
+        turfWars.init(ds, world, orbToken, baseBuilding, zoneImpl);
+
+        if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("local")) {
+            turfWars.buySeasonPass{value: 0.05 ether}();
+        } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("garnet")) {
+            // -- Cannot buy pass on Garnet as minting period is over
+            console.log("Skipping buySeasonPass on Garnet");
+            // turfWars.buySeasonPass{value: 0.03 ether}();
+        } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("garnet")) {
+            // -- Cannot buy pass on Garnet as minting period is over
+            console.log("Skipping buySeasonPass on Mainnet");
+            // turfWars.buySeasonPass{value: 0.03 ether}();
+        }
+        vm.stopBroadcast();
+
+        return turfWars;
     }
 }

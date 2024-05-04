@@ -15,7 +15,7 @@ import {ITurfWars} from "downstream/ITurfWars.sol";
 
 // import { console } from "forge-std/console.sol";
 
-contract TurfWars is ITurfWars, Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract TurfWarsV2 is ITurfWars, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     Game public ds;
     IWorld public world;
     IERC20Mintable public orbToken;
@@ -84,5 +84,13 @@ contract TurfWars is ITurfWars, Initializable, OwnableUpgradeable, UUPSUpgradeab
         bytes32 playerEntity = MatchPlayer.get(matchEntity, playerAddress);
         require(playerEntity != 0, "player not registered for match");
         return getWinningPlayer(matchEntity) == playerEntity;
+    }
+
+    function newFunction() public pure returns (string memory) {
+        return "new function on my upgradeable contract";
+    }
+
+    function newFunction2() public pure returns (uint8) {
+        return 123;
     }
 }
