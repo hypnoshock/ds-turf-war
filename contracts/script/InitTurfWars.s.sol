@@ -79,6 +79,10 @@ contract InitTurfWars is Script {
                 // -- Cannot buy pass on Garnet as minting period is over
                 console.log("Skipping buySeasonPass on Garnet");
                 // turfWars.buySeasonPass{value: 0.03 ether}();
+            } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256(abi.encodePacked("garnet"))) {
+                // -- Cannot buy pass on Garnet as minting period is over
+                console.log("Skipping buySeasonPass on Mainnet");
+                // turfWars.buySeasonPass{value: 0.03 ether}();
             }
             vm.stopBroadcast();
 
