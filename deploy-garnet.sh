@@ -14,6 +14,6 @@ fi
 
 cd $ROOT/contracts
 
-# --gas-price 100100000000000
+# --gas-price 0.00010005
 forge script --rpc-url $RPC_URL --slow --broadcast -vvv script/InitTurfWars.s.sol
 # forge script --rpc-url $RPC_URL -vvv script/InitTurfWars.s.sol

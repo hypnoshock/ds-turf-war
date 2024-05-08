@@ -6,6 +6,7 @@ source .env
 
 ROOT=$(pwd)
 
+rm -rf $ROOT/deployments/deploy-local.json
 
 if [ "$DEPLOY_DS" = "true" ]
 then

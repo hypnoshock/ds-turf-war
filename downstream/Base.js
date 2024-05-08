@@ -6,14 +6,24 @@ const BLOCK_TIME_SECS = 2;
 const TEAM_A = "teamA";
 const TEAM_B = "teamB";
 
+const NETWORK_LOCAl = 0;
+const NETWORK_GARNET = 1;
+const NETWORK_REDSTONE = 2;
+
+const SS_URL_LOCAL = "http://localhost:1337";
+const SS_URL_GARNET = "https://aa.skystrife.xyz";
+const SS_URL_REDSTONE = "https://play.skystrife.xyz/";
+
 export default async function update(state, block) {
   //   const buildings = state.world?.buildings || [];
   const mobileUnit = getMobileUnit(state);
   const selectedTile = getSelectedTile(state);
   const selectedBuilding =
     selectedTile && getBuildingOnTile(state, selectedTile);
+  const zone = state.world;
 
   // DEBUG
+  // console.log(state);
   // const implementationAddr = selectedBuilding.kind.implementation.id.slice(-40);
   // console.log("implementationAddr", implementationAddr);
   // console.log("selectedBuilding", selectedBuilding);
@@ -75,19 +85,40 @@ export default async function update(state, block) {
     );
   };
 
-  const joinBattle = () => {};
+  const getMatchURL = () => {
+    const network = getDataInt(zone, "network");
+    let skyStrifeUrl = SS_URL_LOCAL;
+    switch (network) {
+      case NETWORK_LOCAl:
+        skyStrifeUrl = SS_URL_LOCAL;
+        break;
+      case NETWORK_GARNET:
+        skyStrifeUrl = SS_URL_GARNET;
+        break;
+      case NETWORK_REDSTONE:
+        skyStrifeUrl = SS_URL_REDSTONE;
+        break;
+    }
+
+    return `${skyStrifeUrl}/match?asPlayer=&useExternalWallet=&match=${matchID}`;
+  };
+
+  console.log("matchUrl", getMatchURL());
+  console.log("window.location.href", window.location.href);
 
   let html = ``;
   const buttons = [];
   if (!matchID || matchID === nullBytes32) {
-    if (playerTeam != tileTeam) {
-      buttons.push({
-        text: "Start Battle",
-        type: "action",
-        action: startBattle,
-        disabled: false,
-      });
-    }
+    // if (playerTeam != tileTeam) {
+    //   // Only the opposising team can start a battle
+    // }
+
+    buttons.push({
+      text: "Start Battle",
+      type: "action",
+      action: startBattle,
+      disabled: false,
+    });
   } else {
     // NOTE: We have to always show the claim button even when the match hasn't been played
     // as the match status isn't indexed on the DS graph
@@ -100,7 +131,10 @@ export default async function update(state, block) {
   }
 
   if (matchID && matchID !== nullBytes32) {
-    html = `<a href="http://localhost:1337/match?asPlayer=&useExternalWallet=&match=${matchID}" target="_blank">Join Match</a>`;
+    // html = `<a href="http://localhost:1337/match?asPlayer=&useExternalWallet=&match=${matchID}" target="_blank">Join Match</a>`;
+    html = `<a href="${getMatchURL()}" target="_blank">Join Match</a>`;
+
+    // Join battle button wasn't working properly so using <a> tag for now
     // buttons.push({
     //   text: "Join Battle",
     //   type: "action",
@@ -124,7 +158,7 @@ export default async function update(state, block) {
     version: 1,
     components: [
       {
-        id: "tutorial-5",
+        id: "TW-Base",
         type: "building",
         content: [
           {
