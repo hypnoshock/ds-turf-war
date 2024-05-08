@@ -22,7 +22,7 @@ export default async function update(state, block) {
     selectedTile && getBuildingOnTile(state, selectedTile);
 
   // DEBUG
-  console.log(state);
+  // console.log(state);
   // const implementationAddr = selectedBuilding.kind.implementation.id.slice(-40);
   // console.log("implementationAddr", implementationAddr);
   // console.log("selectedBuilding", selectedBuilding);
@@ -101,8 +101,7 @@ export default async function update(state, block) {
     return `${skyStrifeUrl}/match?asPlayer=&useExternalWallet=&match=${matchID}`;
   };
 
-  console.log("matchUrl", getMatchURL());
-  console.log("window.location.href", window.location.href);
+  // console.log("matchUrl", getMatchURL());
 
   let html = ``;
   const buttons = [];
