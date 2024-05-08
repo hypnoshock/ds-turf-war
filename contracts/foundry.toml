@@ -7,6 +7,6 @@ solc = "0.8.24"
 # additional solc allow paths
 allow_paths = ["../downstream"]
 
-fs_permissions = [{ access = "read-write", path = "./out"}]
+fs_permissions = [{ access = "read-write", path = "../deployments"}]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

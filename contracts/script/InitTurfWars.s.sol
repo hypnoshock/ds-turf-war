@@ -19,11 +19,12 @@ import {State} from "../src/ds/IState.sol";
 import {Schema, Node, BuildingCategory} from "../src/ds/Schema.sol";
 
 import {TurfWars} from "../src/TurfWars.sol";
+import {TurfWarsV2} from "../src/TurfWarsUpgrade.sol";
 import {Helper} from "../src/Helper.sol";
 
 using Schema for State;
 
-uint constant TW_ORB_POOL_AMOUNT = 500 ether;
+uint constant TW_ORB_POOL_AMOUNT = 500 ether; // 500
 
 contract InitTurfWars is Script {
     function setUp() public {}
@@ -33,7 +34,7 @@ contract InitTurfWars is Script {
         State state = ds.getState();
         int16 zoneKey = int16(vm.envInt("DS_ZONE"));
 
-        string memory deployInfoPath = string(abi.encodePacked("./out/deploy-", vm.envString("DS_NETWORK"), ".json"));
+        string memory deployInfoPath = string(abi.encodePacked("../deployments/deploy-", vm.envString("DS_NETWORK"), ".json"));
 
         TurfWars turfWars;
 
@@ -55,6 +56,7 @@ contract InitTurfWars is Script {
             address ssDeployAddr = vm.addr(vm.envUint("SS_DEPLOY_KEY"));
             uint256 deployerOrbBal = orbToken.balanceOf(ssDeployAddr);
             console.log("Deployer orbs: %s", deployerOrbBal); // 10 ** 18
+            console.log("Deployer eth: %s", ssDeployAddr.balance); // 10 ** 18
         }
 
         // Base building handle
@@ -75,6 +77,7 @@ contract InitTurfWars is Script {
         } else {
             console.log("Skipping deploy of TurfWars contract. Already deployed.");
             if (address(turfWars.baseBuilding()) != address(baseBuilding)) {
+                console.log("Updating baseBuilding address on TurfWars contract");
                 vm.startBroadcast(dsDeployKey);
                 turfWars.setBaseBuilding(baseBuilding);
                 vm.stopBroadcast();
@@ -85,39 +88,37 @@ contract InitTurfWars is Script {
         if (false) {
             buySeasonPass(turfWars);
         }
-        
-        {
-            bytes32 firstMatchInWindow = Helper.findFirstMatchInWindow(SkyPoolConfig.getWindow());
-            require(firstMatchInWindow != 0, "No match found in window");
-            console.log("First Match in Window: %x", uint32(uint256(firstMatchInWindow >> 224)));
 
-            address dsDeployAddr = vm.addr(dsDeployKey);
+        // Sky Strife first match in window
+        bytes32 firstMatchInWindow = Helper.findFirstMatchInWindow(SkyPoolConfig.getWindow());
+        require(firstMatchInWindow != 0, "No match found in window");
+        console.log("First Match in Window: %x", uint32(uint256(firstMatchInWindow >> 224)));
 
-            if (baseBuilding.owner() == address(0)) {
+        // Initialise base building
+        if (baseBuilding.owner() == address(0)) {
+            vm.startBroadcast(dsDeployKey);
+            console.log("Initializing Base Building");
+            baseBuilding.init(vm.addr(dsDeployKey), address(world), address(turfWars), firstMatchInWindow);
+            vm.stopBroadcast();
+        } else {
+            console.log("Base Building already initialized - Updating any changes");
+            if (address(baseBuilding.world()) != address(world)) {
+                console.log("Updating world address on Base Building");
                 vm.startBroadcast(dsDeployKey);
-                console.log("Initializing Base Building");
-                baseBuilding.init(dsDeployAddr, address(world), address(turfWars), firstMatchInWindow);
+                baseBuilding.setSkyStrifeWorld(address(world));
                 vm.stopBroadcast();
-            } else {
-                console.log("Base Building already initialized - Updating any changes");
-                if (address(baseBuilding.world()) != address(world)) {
-                    console.log("Updating world address on Base Building");
-                    vm.startBroadcast(dsDeployKey);
-                    baseBuilding.setSkyStrifeWorld(address(world));
-                    vm.stopBroadcast();
-                }
-                if (address(baseBuilding.turfWars()) != address(turfWars)) {
-                    console.log("Updating TurfWars address on Base Building");
-                    vm.startBroadcast(dsDeployKey);
-                    baseBuilding.setTurfWars(address(turfWars));
-                    vm.stopBroadcast();
-                }
-                if (baseBuilding.firstMatchInWindow() != firstMatchInWindow) {
-                    console.log("Updating firstMatchInWindow on Base Building");
-                    vm.startBroadcast(dsDeployKey);
-                    baseBuilding.setFirstMatchInWindow(firstMatchInWindow);
-                    vm.stopBroadcast();
-                }
+            }
+            if (address(baseBuilding.turfWars()) != address(turfWars)) {
+                console.log("Updating TurfWars address on Base Building");
+                vm.startBroadcast(dsDeployKey);
+                baseBuilding.setTurfWars(address(turfWars));
+                vm.stopBroadcast();
+            }
+            if (baseBuilding.firstMatchInWindow() != firstMatchInWindow) {
+                console.log("Updating firstMatchInWindow on Base Building");
+                vm.startBroadcast(dsDeployKey);
+                baseBuilding.setFirstMatchInWindow(firstMatchInWindow);
+                vm.stopBroadcast();
             }
         }
 
@@ -133,31 +134,14 @@ contract InitTurfWars is Script {
             vm.stopBroadcast();
         } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256(abi.encodePacked("garnet"))) {
             console.log("Topping up TurfWars contract with orbs");
-
-            address ssDeployAddr = vm.addr(vm.envUint("SS_DEPLOY_KEY"));
-
-            // Top up the TurfWars contract with ORBs
-            uint256 requiredOrbs = TW_ORB_POOL_AMOUNT - orbToken.balanceOf(address(turfWars));
-            require(requiredOrbs <= orbToken.balanceOf(ssDeployAddr), "Deployer does not have enough orbs to top up TurfWars contract");
-            
-            if (requiredOrbs > 0) {
-                vm.startBroadcast(ssDeployKey);
-                orbToken.transfer(address(turfWars), requiredOrbs);
-                vm.stopBroadcast();
-            }
-
-            console.log("Deployer orbs: %s", orbToken.balanceOf(ssDeployAddr));
-            console.log("TurfWars orbs: %s", orbToken.balanceOf(address(turfWars)));
-            console.log("TurfWars ETH balance: %s", address(turfWars).balance);
+            topUpOrbs(ssDeployKey, turfWars, orbToken, TW_ORB_POOL_AMOUNT);
         }
-
-        
 
         // -- Write deploy info
         // https://book.getfoundry.sh/cheatcodes/serialize-json
         string memory o = "key";
         vm.serializeAddress(o, "orbToken", address(orbToken));
-        // vm.serializeBytes32(o, "firstMatchInWindow", firstMatchInWindow);
+        vm.serializeBytes32(o, "firstMatchInWindow", firstMatchInWindow);
         vm.serializeAddress(o, "turfWars", address(turfWars));
         
         string memory newDeployJson = vm.serializeAddress(o, "zoneImpl", address(zoneImpl));
@@ -184,11 +168,35 @@ contract InitTurfWars is Script {
         } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("garnet")) {
             // -- Cannot buy pass on Garnet as minting period is over
             console.log("Skipping buySeasonPass on Garnet");
-            // turfWars.buySeasonPass{value: 0.03 ether}();
         } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("redstone")) {
             console.log("Buying buySeasonPass on Mainnet");
             turfWars.buySeasonPass{value: 0.03 ether}();
         }
+        vm.stopBroadcast();
+    }
+
+    function topUpOrbs(uint256 ssDeployKey, TurfWars turfWars, IERC20Mintable orbToken, uint256 targetAmount) public {
+        address ssDeployAddr = vm.addr(ssDeployKey);
+
+        // Top up the TurfWars contract with ORBs
+        uint256 requiredOrbs = targetAmount - orbToken.balanceOf(address(turfWars));
+        require(requiredOrbs <= orbToken.balanceOf(ssDeployAddr), "Deployer does not have enough orbs to top up TurfWars contract");
+        
+        if (requiredOrbs > 0) {
+            vm.startBroadcast(ssDeployKey);
+            orbToken.transfer(address(turfWars), requiredOrbs);
+            vm.stopBroadcast();
+        }
+
+        console.log("Deployer orbs: %s", orbToken.balanceOf(ssDeployAddr));
+        console.log("TurfWars orbs: %s", orbToken.balanceOf(address(turfWars)));
+        console.log("TurfWars ETH balance: %s", address(turfWars).balance);
+    }
+
+    function testUpgrade(TurfWars turfWars) public {
+        vm.startBroadcast(vm.envUint("DS_DEPLOY_KEY"));
+        turfWars.upgradeTo(address(new TurfWarsV2()));
+        console.log(TurfWarsV2(payable(turfWars)).newFunction());
         vm.stopBroadcast();
     }
 }
