@@ -185,45 +185,35 @@ function getTurfWarsState(state, block, zone) {
   const teamAPlayers = [];
   for (let i = 0; i < teamALength; i++) {
     const unitId = getTeamUnitAtIndex(zone, "teamA", i);
-    const mobileUnit = state.world?.mobileUnits?.find(
-      (unit) => unit.id === unitId
-    );
-    if (mobileUnit) {
-      teamAPlayers.push(mobileUnit.owner.id);
-    } else {
-      console.warn("Mobile unit not found for team A player", unitId);
-    }
+    teamAPlayers.push(unitId);
   }
 
   const teamBPlayers = [];
   for (let i = 0; i < teamBLength; i++) {
     const unitId = getTeamUnitAtIndex(zone, "teamB", i);
-    const mobileUnit = state.world?.mobileUnits?.find(
-      (unit) => unit.id === unitId
-    );
-    if (mobileUnit) {
-      teamBPlayers.push(mobileUnit.owner.id);
-    } else {
-      console.warn("Mobile unit not found for team B player", unitId);
-    }
+    teamBPlayers.push(unitId);
   }
 
+  const dirtyTiles = [];
   const teamATiles = [];
   const teamBTiles = [];
   zone.allData.forEach((data) => {
     if (data.name.includes("_winner")) {
       const tileId = data.name.split("_")[0];
+      dirtyTiles.push(tileId);
       if (
         !!teamAPlayers.some(
-          (playerAddr) =>
-            playerAddr.toLowerCase() == data.value.slice(0, 50).toLowerCase()
+          (unitId) =>
+            unitId.toLowerCase() ==
+            data.value.slice(0, 24 * 2 + 2).toLowerCase()
         )
       ) {
         teamATiles.push(tileId);
       } else if (
         !!teamBPlayers.some(
-          (playerAddr) =>
-            playerAddr.toLowerCase() == data.value.slice(0, 50).toLowerCase()
+          (unitId) =>
+            unitId.toLowerCase() ==
+            data.value.slice(0, 24 * 2 + 2).toLowerCase()
         )
       ) {
         teamBTiles.push(tileId);
@@ -244,6 +234,7 @@ function getTurfWarsState(state, block, zone) {
     teamAPlayers,
     teamBPlayers,
     remainingTimeMs,
+    dirtyTiles,
   };
 }
 

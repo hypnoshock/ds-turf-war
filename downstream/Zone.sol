@@ -64,7 +64,7 @@ contract TurfWarsZone is ZoneKind, IZone {
     }
 
     // TODO: only bases can call this
-    function setAreaWinner(Game ds, bytes24 origin, bytes24 player, bool destroyBuilding) public {
+    function setAreaWinner(Game ds, bytes24 origin, bytes24 mobileUnit, bool destroyBuilding) public {
         (int16 originZ, int16 originQ, int16 originR, int16 originS ) = getTileCoords(origin);
         bytes24 zoneID = Node.Zone(originZ);
 
@@ -86,7 +86,7 @@ contract TurfWarsZone is ZoneKind, IZone {
                     bytes24 nextTile = Node.Tile(originZ, q, r, s);
                     if (distance(origin, nextTile) <= uint256(uint16(range))) {
                         if (destroyBuilding || !_hasTileBeenWon(ds, nextTile, zoneID)) {
-                            _setTileWinner(ds, nextTile, player, zoneID);
+                            _setTileWinner(ds, nextTile, mobileUnit, zoneID);
                         }
                         // tileCount++;
                     }
@@ -329,7 +329,6 @@ contract TurfWarsZone is ZoneKind, IZone {
 
     function onUnitArrive(Game ds, bytes24 zoneID, bytes24 mobileUnitID) external override {
         State state = ds.getState();
-        bytes24 player = state.getOwner(mobileUnitID);
         // address playerAddress = state.getOwnerAddress(player);
         bytes24 mobileUnitTile = state.getCurrentLocation(mobileUnitID, uint64(block.number));
         (int16 z,,,) = getTileCoords(mobileUnitTile);
@@ -337,33 +336,34 @@ contract TurfWarsZone is ZoneKind, IZone {
         GAME_STATE gameState = _getGameState(state, zoneID);
 
         if (gameState == GAME_STATE.NOT_STARTED) {
-            bytes24 centerTile = Node.Tile(z, 0, 0, 0);
-            if (mobileUnitTile == centerTile) {
-                return;
-            }
+            // -- Unit move locking
+            // bytes24 centerTile = Node.Tile(z, 0, 0, 0);
+            // if (mobileUnitTile == centerTile) {
+            //     return;
+            // }
 
-            bool isTeamA = _isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID);
-            bool isTeamB = _isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
+            // bool isTeamA = _isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID);
+            // bool isTeamB = _isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
 
-            // Units who are on a team are allowed to move to the starting positions
-            // TODO: Make these positions configurable / dynamic
-            if (isTeamA && mobileUnitTile == Node.Tile(z, 0, -5, 5)) {
-                return;
-            } else if (isTeamB && mobileUnitTile == Node.Tile(z, 0, 5, -5)) {
-                return;
-            }
+            // // Units who are on a team are allowed to move to the starting positions
+            // // TODO: Make these positions configurable / dynamic
+            // if (isTeamA && mobileUnitTile == Node.Tile(z, 0, -5, 5)) {
+            //     return;
+            // } else if (isTeamB && mobileUnitTile == Node.Tile(z, 0, 5, -5)) {
+            //     return;
+            // }
 
-            // Units that aren't in a team but where already in the zone before the game started can move (to allow them to walk back to centre)
-            // If they are on the centre tile they are locked to it
-            if (!isTeamA && !isTeamB) {
-                bytes24 mobileUnitPrevTile = state.getPrevLocation(mobileUnitID);
-                (int16 prevZ,,,) = getTileCoords(mobileUnitTile);
-                if (prevZ == z && mobileUnitPrevTile != centerTile) {
-                    return;
-                }
-            }
+            // // Units that aren't in a team but where already in the zone before the game started can move (to allow them to walk back to centre)
+            // // If they are on the centre tile they are locked to it
+            // if (!isTeamA && !isTeamB) {
+            //     bytes24 mobileUnitPrevTile = state.getPrevLocation(mobileUnitID);
+            //     (int16 prevZ,,,) = getTileCoords(mobileUnitTile);
+            //     if (prevZ == z && mobileUnitPrevTile != centerTile) {
+            //         return;
+            //     }
+            // }
 
-            revert("Unit cannot move, Game not started");
+            // revert("Unit cannot move, Game not started");
         } else if (gameState == GAME_STATE.IN_PROGRESS) {
             bool isUnitInTeam =
                 _isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID) || _isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
@@ -371,7 +371,7 @@ contract TurfWarsZone is ZoneKind, IZone {
 
             // Claim unclaimed tile
             if (!_hasTileBeenWon(ds, mobileUnitTile, zoneID)) {
-                _setTileWinner(ds, mobileUnitTile, player, zoneID);
+                _setTileWinner(ds, mobileUnitTile, mobileUnitID, zoneID);
             }
         } else if (gameState == GAME_STATE.FINISHED) {
             bytes24 centerTile = Node.Tile(z, 0, 0, 0);
@@ -427,9 +427,9 @@ contract TurfWarsZone is ZoneKind, IZone {
         return ds.getState().getData(zoneID, LibUtils.getTileWinnerKey(tile)) != bytes32(0);
     }
 
-    function _setTileWinner(Game ds, bytes24 tile, bytes24 player, bytes24 zoneID) internal {
+    function _setTileWinner(Game ds, bytes24 tile, bytes24 mobileUnit, bytes24 zoneID) internal {
         ds.getDispatcher().dispatch(
-            abi.encodeCall(Actions.SET_DATA_ON_ZONE, (zoneID, LibUtils.getTileWinnerKey(tile), player))
+            abi.encodeCall(Actions.SET_DATA_ON_ZONE, (zoneID, LibUtils.getTileWinnerKey(tile), mobileUnit))
         );
     }
 

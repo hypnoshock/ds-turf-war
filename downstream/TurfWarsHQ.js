@@ -2,10 +2,12 @@ import ds from "downstream";
 
 const nullBytes24 = `0x${"00".repeat(24)}`;
 
-const STATE_NOT_STARTED = 0;
-const STATE_IN_PROGRESS = 1;
+const BLOCK_TIME_SECS = 2;
+const GAME_STATE_NOT_STARTED = 0;
+const GAME_STATE_IN_PROGRESS = 1;
+const GAME_STATE_FINISHED = 2;
 
-export default async function update(state) {
+export default async function update(state, block) {
   const buildings = state.world?.buildings || [];
   const mobileUnit = getMobileUnit(state);
   const selectedTile = getSelectedTile(state);
@@ -32,16 +34,14 @@ export default async function update(state) {
     };
   }
 
-  const { teamAPlayers, teamBPlayers, teamATiles, teamBTiles, gameState } =
-    getTurfWarsState(state, state.world);
+  const { teamAPlayers, teamBPlayers, dirtyTiles, gameState } =
+    getTurfWarsState(state, block, state.world);
 
   const isPlayerTeamA = teamAPlayers.some(
-    (playerNodeId) =>
-      mobileUnit?.owner.id.toLowerCase() == playerNodeId.toLowerCase()
+    (unitId) => mobileUnit?.id.toLowerCase() == unitId.toLowerCase()
   );
   const isPlayerTeamB = teamBPlayers.some(
-    (playerNodeId) =>
-      mobileUnit?.owner.id.toLowerCase() == playerNodeId.toLowerCase()
+    (unitId) => mobileUnit?.id.toLowerCase() == unitId.toLowerCase()
   );
 
   const joinTeam = () => {
@@ -131,7 +131,7 @@ export default async function update(state) {
       args: [
         mobileUnit.id,
         ds.encodeCall("function reset(bytes24[], bytes24[])", [
-          [...teamATiles, ...teamBTiles],
+          dirtyTiles,
           baseBuildingIds,
         ]),
       ],
@@ -140,7 +140,7 @@ export default async function update(state) {
 
   const buttons = [];
   switch (gameState) {
-    case STATE_NOT_STARTED: {
+    case GAME_STATE_NOT_STARTED: {
       if (!isPlayerTeamA && !isPlayerTeamB) {
         buttons.push({
           text: "Join Team",
@@ -158,7 +158,8 @@ export default async function update(state) {
       }
       break;
     }
-    case STATE_IN_PROGRESS: {
+    case GAME_STATE_FINISHED:
+    case GAME_STATE_IN_PROGRESS: {
       if (isPlayerTeamA || isPlayerTeamB) {
         buttons.push({
           text: "Reset Game",
@@ -190,59 +191,59 @@ export default async function update(state) {
   };
 }
 
-function getTurfWarsState(state, zone) {
+// copied from Zone.js
+function getTurfWarsState(state, block, zone) {
   if (!zone) {
     throw new Error("Zone not found");
   }
   const prizePool = getDataInt(zone, "prizePool");
-  const gameState = getDataInt(zone, "gameState");
   const startBlock = getDataInt(zone, "startBlock");
   const endBlock = getDataInt(zone, "endBlock");
   const teamALength = getDataInt(zone, "teamALength");
   const teamBLength = getDataInt(zone, "teamBLength");
 
+  // Remaining time
+  const nowBlock = block;
+  const remainingBlocks = endBlock > nowBlock ? endBlock - nowBlock : 0;
+  const remainingTimeMs = remainingBlocks * BLOCK_TIME_SECS * 1000;
+
+  let gameState = getDataInt(zone, "gameState");
+  if (remainingBlocks === 0 && gameState == GAME_STATE_IN_PROGRESS) {
+    gameState = GAME_STATE_FINISHED;
+  }
+
   const teamAPlayers = [];
   for (let i = 0; i < teamALength; i++) {
     const unitId = getTeamUnitAtIndex(zone, "teamA", i);
-    const mobileUnit = state.world?.mobileUnits?.find(
-      (unit) => unit.id === unitId
-    );
-    if (mobileUnit) {
-      teamAPlayers.push(mobileUnit.owner.id);
-    } else {
-      console.warn("Mobile unit not found for team A player", unitId);
-    }
+    teamAPlayers.push(unitId);
   }
 
   const teamBPlayers = [];
   for (let i = 0; i < teamBLength; i++) {
     const unitId = getTeamUnitAtIndex(zone, "teamB", i);
-    const mobileUnit = state.world?.mobileUnits?.find(
-      (unit) => unit.id === unitId
-    );
-    if (mobileUnit) {
-      teamBPlayers.push(mobileUnit.owner.id);
-    } else {
-      console.warn("Mobile unit not found for team B player", unitId);
-    }
+    teamBPlayers.push(unitId);
   }
 
+  const dirtyTiles = [];
   const teamATiles = [];
   const teamBTiles = [];
   zone.allData.forEach((data) => {
     if (data.name.includes("_winner")) {
       const tileId = data.name.split("_")[0];
+      dirtyTiles.push(tileId);
       if (
         !!teamAPlayers.some(
-          (playerAddr) =>
-            playerAddr.toLowerCase() == data.value.slice(0, 50).toLowerCase()
+          (unitId) =>
+            unitId.toLowerCase() ==
+            data.value.slice(0, 24 * 2 + 2).toLowerCase()
         )
       ) {
         teamATiles.push(tileId);
       } else if (
         !!teamBPlayers.some(
-          (playerAddr) =>
-            playerAddr.toLowerCase() == data.value.slice(0, 50).toLowerCase()
+          (unitId) =>
+            unitId.toLowerCase() ==
+            data.value.slice(0, 24 * 2 + 2).toLowerCase()
         )
       ) {
         teamBTiles.push(tileId);
@@ -262,6 +263,8 @@ function getTurfWarsState(state, zone) {
     teamBTiles,
     teamAPlayers,
     teamBPlayers,
+    remainingTimeMs,
+    dirtyTiles,
   };
 }
 

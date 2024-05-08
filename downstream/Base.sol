@@ -69,7 +69,7 @@ contract Base is BuildingKind, IBase {
         IZone zoneImpl = IZone(state.getImplementation(zone));
         require(address(zoneImpl) != address(0), "Base::construct - No implementation for zone");
         zoneImpl.setAreaWinner(
-            ds, Node.Tile(coords[0], coords[1], coords[2], coords[3]), state.getOwner(mobileUnitID), false
+            ds, Node.Tile(coords[0], coords[1], coords[2], coords[3]), mobileUnitID, false
         );
     }
 
@@ -155,7 +155,7 @@ contract Base is BuildingKind, IBase {
         );
 
         IZone zoneImpl = IZone(state.getImplementation(zone));
-        zoneImpl.setAreaWinner(ds, tile, player, true);
+        zoneImpl.setAreaWinner(ds, tile, actor, true);
         // zoneImpl.spawnHammer(ds, state, tile, 1);
     }
 
