@@ -11,6 +11,7 @@ enum GAME_STATE {
 }
 
 bytes24 constant HAMMER_ITEM = 0x6a7a67f09e2cd31d00000001000000140000001400000014;
+string constant DATA_SELECTED_LEVEL = "selectedLevel";
 
 interface IZone {
     function setAreaWinner(Game ds, bytes24 origin, bytes24 player, bool overwrite) external;

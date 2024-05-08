@@ -34,12 +34,10 @@ export default async function update(state, block) {
     state.world
   );
   const isPlayerTeamA = teamAPlayers.some(
-    (playerNodeId) =>
-      mobileUnit?.owner.id.toLowerCase() == playerNodeId.toLowerCase()
+    (unitId) => mobileUnit?.id.toLowerCase() == unitId.toLowerCase()
   );
   const isPlayerTeamB = teamBPlayers.some(
-    (playerNodeId) =>
-      mobileUnit?.owner.id.toLowerCase() == playerNodeId.toLowerCase()
+    (unitId) => mobileUnit?.id.toLowerCase() == unitId.toLowerCase()
   );
 
   const readyTeam = getDataInt(state.world, "ready");

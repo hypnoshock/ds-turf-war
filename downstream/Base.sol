@@ -10,7 +10,7 @@ import {IWorld} from "./IWorld.sol";
 import {LibString} from "./LibString.sol";
 import {LibUtils} from "./LibUtils.sol";
 import {ITurfWars} from "./ITurfWars.sol";
-import {IZone, GAME_STATE} from "./IZone.sol";
+import {IZone, GAME_STATE, DATA_SELECTED_LEVEL} from "./IZone.sol";
 import {IBase} from "./IBase.sol";
 
 using Schema for State;
@@ -18,8 +18,8 @@ using Schema for State;
 contract Base is BuildingKind, IBase {
     bytes32 constant LEVEL_FOUR_PLAYER = 0x4361756c64726f6e2d3200000000000000000000000000000000000000000000;
     bytes32 constant LEVEL_KNIFE_FIGHT = 0x4b6e6966655f46696768745f3200000000000000000000000000000000000000;
-    bytes32 constant LEVEL_ISLE = 0x5468652049736c65000000000000000000000000000000000000000000000000;
-    bytes32 constant SELECTED_LEVEL = LEVEL_KNIFE_FIGHT;
+    bytes32 constant LEVEL_ISLE = 0x49736c6500000000000000000000000000000000000000000000000000000000;
+    bytes32 constant DEFAULT_LEVEL = LEVEL_ISLE;
     bytes32 constant HERO = 0x48616c6265726469657200000000000000000000000000000000000000000000;
 
     uint256 constant BATTLE_TIMEOUT_BLOCKS = 20 / BLOCK_TIME_SECS;
@@ -91,34 +91,32 @@ contract Base is BuildingKind, IBase {
         State state = ds.getState();
 
         bytes24 tile = state.getFixedLocation(buildingInstance);
-        (int16 z, int16 q, int16 r, int16 s) = LibUtils.getTileCoords(tile);
+        (int16 z,,,) = LibUtils.getTileCoords(tile);
 
         bytes24 zoneID = Node.Zone(z);
-        IZone zoneImpl = IZone(state.getImplementation(zoneID));
 
-        require(zoneImpl.getGameState(state, zoneID) == GAME_STATE.IN_PROGRESS, "Base: Cannot start battle when game has ended");
+        {
+            IZone zoneImpl = IZone(state.getImplementation(zoneID));
+            require(zoneImpl.getGameState(state, zoneID) == GAME_STATE.IN_PROGRESS, "Base: Cannot start battle when game has ended");
+        }
 
-        uint256 count = uint256(state.getData(buildingInstance, "count")) + 1;
-        ds.getDispatcher().dispatch(
-            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, "count", bytes32(count)))
-        );
-
+        bytes32 matchID = _getMatchID(buildingInstance);
         string memory name = string(
             abi.encodePacked(
                 "TW_",
                 LibString.toString(uint256(uint16(z))),
                 ":",
-                LibString.toCrunkString(uint256(uint16(q)), 2),
-                LibString.toCrunkString(uint256(uint16(r)), 2),
-                LibString.toCrunkString(uint256(uint16(s)), 2),
-                LibString.toString(uint256(count))
+                LibString.toCrunkString(uint256(matchID) >> 224, 4)
             )
         );
-
-        bytes32 matchID = _getMatchID(buildingInstance);
+        bytes32 level = state.getData(zoneID, DATA_SELECTED_LEVEL);
+        if (level == bytes32(0)) {
+            level = DEFAULT_LEVEL;
+        }
 
         require(address(turfWars) != address(0), "Base: TurfWars not set");
-        turfWars.startBattle(name, firstMatchInWindow, matchID, SELECTED_LEVEL);
+
+        turfWars.startBattle(name, firstMatchInWindow, matchID, level);
 
         ds.getDispatcher().dispatch(
             abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, LibUtils.getTileMatchKey(tile), matchID))
@@ -142,11 +140,23 @@ contract Base is BuildingKind, IBase {
         bytes24 player = state.getOwner(actor);
         address playerAddress = state.getOwnerAddress(player);
 
+        // if at least one person has joined the match then check for winner
+        if (turfWars.hasAnyPlayerJoinedMatch(matchID)) {
+            // Does this still eval true after a match has been won?
+            require(turfWars.isAddressWinner(playerAddress, matchID), "Player is not the winner");
+        } else {
+            // require the match has timed out
+            require(uint256(state.getData(buildingInstance, LibUtils.getTileMatchTimeoutBlockKey(tile))) < block.number , "Match has not timed out, cannot claim win yet");
+        }
+
+
+        // else if the match has timed out then the player can claim the win
+
         // Enforce the claimer is the winner if the battle has ended
         // TODO: check if battle started rather than checking for winner
-        if (uint256(state.getData(buildingInstance, LibUtils.getTileMatchTimeoutBlockKey(tile))) > block.number || turfWars.getWinningPlayer(matchID) != bytes32(0)) {
-            require(turfWars.isAddressWinner(playerAddress, matchID), "Player is not the winner");
-        }
+        // if (|| turfWars.getWinningPlayer(matchID) != bytes32(0)) {
+            
+        // }
 
         // TODO: Don't allow claiming if the tile already belongs to the claimer's team
 

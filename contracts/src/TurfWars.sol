@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {MatchRanking, MatchPlayer} from "./codegen/index.sol";
+import {MatchRanking, MatchPlayer, MatchPlayers} from "./codegen/index.sol";
 import {IBase} from "downstream/IBase.sol";
 import {IZone} from "downstream/IZone.sol";
 import {Game} from "ds/IGame.sol";
@@ -77,6 +77,10 @@ contract TurfWars is ITurfWars, Initializable, OwnableUpgradeable, UUPSUpgradeab
             return ranking[0];
         }
         return bytes32(0);
+    }
+
+    function hasAnyPlayerJoinedMatch(bytes32 matchEntity) public view returns (bool) {
+        return MatchPlayers.length(matchEntity) > 0;
     }
 
     function isAddressWinner(address playerAddress, bytes32 matchEntity) public view returns (bool) {

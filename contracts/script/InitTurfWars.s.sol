@@ -19,7 +19,6 @@ import {State} from "../src/ds/IState.sol";
 import {Schema, Node, BuildingCategory} from "../src/ds/Schema.sol";
 
 import {TurfWars} from "../src/TurfWars.sol";
-import {TurfWarsV2} from "../src/TurfWarsUpgrade.sol";
 import {Helper} from "../src/Helper.sol";
 
 using Schema for State;
@@ -129,9 +128,12 @@ contract InitTurfWars is Script {
             vm.startBroadcast(ssDeployKey);
             address ssDeployAddr = vm.addr(ssDeployKey);
             console.log("Minting 10k ORB for TurfWars and SS deployer");
-            orbToken.mint(address(turfWars), 10_000 ether);
+            // orbToken.mint(address(turfWars), 10_000 ether);
             orbToken.mint(address(ssDeployAddr), 10_000 ether);
             vm.stopBroadcast();
+
+            // Topping up instead of minting directly so the process is similar to garnet/redstone
+            topUpOrbs(ssDeployKey, turfWars, orbToken, TW_ORB_POOL_AMOUNT);
         } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256(abi.encodePacked("garnet"))) {
             console.log("Topping up TurfWars contract with orbs");
             topUpOrbs(ssDeployKey, turfWars, orbToken, TW_ORB_POOL_AMOUNT);
@@ -179,7 +181,8 @@ contract InitTurfWars is Script {
         address ssDeployAddr = vm.addr(ssDeployKey);
 
         // Top up the TurfWars contract with ORBs
-        uint256 requiredOrbs = targetAmount - orbToken.balanceOf(address(turfWars));
+
+        uint256 requiredOrbs = orbToken.balanceOf(address(turfWars)) < targetAmount ? targetAmount - orbToken.balanceOf(address(turfWars)) : 0;
         require(requiredOrbs <= orbToken.balanceOf(ssDeployAddr), "Deployer does not have enough orbs to top up TurfWars contract");
         
         if (requiredOrbs > 0) {
@@ -193,10 +196,10 @@ contract InitTurfWars is Script {
         console.log("TurfWars ETH balance: %s", address(turfWars).balance);
     }
 
-    function testUpgrade(TurfWars turfWars) public {
-        vm.startBroadcast(vm.envUint("DS_DEPLOY_KEY"));
-        turfWars.upgradeTo(address(new TurfWarsV2()));
-        console.log(TurfWarsV2(payable(turfWars)).newFunction());
-        vm.stopBroadcast();
-    }
+    // function testUpgrade(TurfWars turfWars) public {
+    //     vm.startBroadcast(vm.envUint("DS_DEPLOY_KEY"));
+    //     turfWars.upgradeTo(address(new TurfWarsV2()));
+    //     console.log(TurfWarsV2(payable(turfWars)).newFunction());
+    //     vm.stopBroadcast();
+    // }
 }
