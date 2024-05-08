@@ -6,9 +6,9 @@ const BLOCK_TIME_SECS = 2;
 const TEAM_A = "teamA";
 const TEAM_B = "teamB";
 
-const NETWORK_LOCAl = 0;
-const NETWORK_GARNET = 1;
-const NETWORK_REDSTONE = 2;
+// set by the deployment script (not sure how find out which network we are on at runtime)
+// Setting the network on the zone directly was also difficult from the deploy script
+const NETWORK = "local";
 
 const SS_URL_LOCAL = "http://localhost:1337";
 const SS_URL_GARNET = "https://aa.skystrife.xyz";
@@ -20,10 +20,9 @@ export default async function update(state, block) {
   const selectedTile = getSelectedTile(state);
   const selectedBuilding =
     selectedTile && getBuildingOnTile(state, selectedTile);
-  const zone = state.world;
 
   // DEBUG
-  // console.log(state);
+  console.log(state);
   // const implementationAddr = selectedBuilding.kind.implementation.id.slice(-40);
   // console.log("implementationAddr", implementationAddr);
   // console.log("selectedBuilding", selectedBuilding);
@@ -86,16 +85,15 @@ export default async function update(state, block) {
   };
 
   const getMatchURL = () => {
-    const network = getDataInt(zone, "network");
     let skyStrifeUrl = SS_URL_LOCAL;
-    switch (network) {
-      case NETWORK_LOCAl:
+    switch (NETWORK) {
+      case "local":
         skyStrifeUrl = SS_URL_LOCAL;
         break;
-      case NETWORK_GARNET:
+      case "garnet":
         skyStrifeUrl = SS_URL_GARNET;
         break;
-      case NETWORK_REDSTONE:
+      case "redstone":
         skyStrifeUrl = SS_URL_REDSTONE;
         break;
     }

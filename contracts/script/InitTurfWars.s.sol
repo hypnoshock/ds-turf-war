@@ -26,16 +26,6 @@ using Schema for State;
 
 uint constant TW_ORB_POOL_AMOUNT = 500 ether; // 500
 
-enum Network {
-    LOCAL,
-    GARNET,
-    REDSTONE
-}
-
-interface Actions {
-    function SET_DATA_ON_ZONE(bytes24 zoneID, string memory key, bytes32 data) external;
-}
-
 contract InitTurfWars is Script {
     function setUp() public {}
 
@@ -79,7 +69,6 @@ contract InitTurfWars is Script {
 
         // ---- Downstream
         uint256 dsDeployKey = vm.envUint("DS_DEPLOY_KEY");
-        setNetwork(ds, Node.Zone(zoneKey), vm.envString("DS_NETWORK"));
 
         // Deploy TurfWars contract if it hasn't been deployed before
 
@@ -158,25 +147,6 @@ contract InitTurfWars is Script {
         string memory newDeployJson = vm.serializeAddress(o, "zoneImpl", address(zoneImpl));
         
         vm.writeJson(newDeployJson, deployInfoPath);
-    }
-
-    function setNetwork(Game ds, bytes24 zoneID, string memory networkStr) internal {
-        if (keccak256(abi.encodePacked(networkStr)) == keccak256('local')) {
-            setNetworkOnZone(ds, zoneID, Network.LOCAL);
-        } else if (keccak256(abi.encodePacked(networkStr)) == keccak256('garnet')) {
-            setNetworkOnZone(ds, zoneID, Network.GARNET);
-        } else if (keccak256(abi.encodePacked(networkStr)) == keccak256('redstone')) {
-            setNetworkOnZone(ds, zoneID, Network.REDSTONE);
-        } else {
-            revert("Invalid network");
-        }
-    }
-
-    function setNetworkOnZone(Game ds, bytes24 zoneID, Network network) internal {
-        console.log("Setting network on zone:", uint8(network));
-
-        network = Network.REDSTONE;
-        ds.getDispatcher().dispatch(abi.encodeCall(Actions.SET_DATA_ON_ZONE, (zoneID, "network", bytes32(uint256(network)))));
     }
 
     function deployTurfWars(Game ds, IWorld world, IERC20Mintable orbToken, IBase baseBuilding) public returns (TurfWars) {

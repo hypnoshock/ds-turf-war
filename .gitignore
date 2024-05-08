@@ -2,3 +2,4 @@
 node_modules
 contracts/lib/forge-std
 .env-mainnet
+base-deploy.js

@@ -9,7 +9,7 @@ spec:
   contract:
     file: ./Base.sol
   plugin:
-    file: ./Base.js
+    file: ./Base-deploy.js
   materials:
     - name: TW Hammer
       quantity: 1
