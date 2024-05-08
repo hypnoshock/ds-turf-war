@@ -6,9 +6,10 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {Script, console} from "forge-std/Script.sol";
 import "forge-std/console.sol";
 import {IERC20Mintable} from "@latticexyz/world-modules/src/modules/erc20-puppet/IERC20Mintable.sol";
+import { IERC721Mintable } from "@latticexyz/world-modules/src/modules/erc721-puppet/IERC721Mintable.sol";
 import {StoreSwitch} from "@latticexyz/store/src/StoreSwitch.sol";
 
-import {SkyPoolConfig, MatchIndexToEntity, MatchSky} from "../src/codegen/index.sol";
+import {SkyPoolConfig, SeasonPassConfig, SeasonPassIndex, MatchIndexToEntity, MatchSky} from "../src/codegen/index.sol";
 
 import {IWorld} from "../src/codegen/world/IWorld.sol";
 import {IBase} from "downstream/IBase.sol";
@@ -75,6 +76,11 @@ contract InitTurfWars is Script {
             turfWars = deployTurfWars(ds, world, orbToken, baseBuilding);
         } else {
             console.log("Skipping deploy of TurfWars contract. Already deployed.");
+
+            if (vm.envBool("UPGRADE_TW")) {
+                upgradeTurfWars(turfWars);
+            }
+
             if (address(turfWars.baseBuilding()) != address(baseBuilding)) {
                 console.log("Updating baseBuilding address on TurfWars contract");
                 vm.startBroadcast(dsDeployKey);
@@ -83,10 +89,7 @@ contract InitTurfWars is Script {
             }
         }
 
-        // TODO: Check if turfwars has season pass before buying
-        if (false) {
-            buySeasonPass(turfWars);
-        }
+        buySeasonPass(turfWars);
 
         // Sky Strife first match in window
         bytes32 firstMatchInWindow = Helper.findFirstMatchInWindow(SkyPoolConfig.getWindow());
@@ -163,18 +166,33 @@ contract InitTurfWars is Script {
     }
 
     function buySeasonPass(TurfWars turfWars) public {
-        console.log("Buying Season Pass");
-        vm.startBroadcast(vm.envUint("DS_DEPLOY_KEY"));
+        IERC721Mintable seasonPassToken = IERC721Mintable(SkyPoolConfig.getSeasonPassToken());
+        if (seasonPassToken.balanceOf(address(turfWars)) > 0) {
+            console.log("Season pass already bought");
+            return;
+        } 
+        
         if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("local")) {
+            console.log("Buying season pass on local");
+
+            // This is seriously a pain in the arse!!
+            vm.startBroadcast(vm.envUint("SS_DEPLOY_KEY"));
+            SeasonPassConfig.setMintCutoff(block.timestamp + 60 * 60 * 24);
+            vm.stopBroadcast();
+            
+            vm.startBroadcast(vm.envUint("DS_DEPLOY_KEY"));
             turfWars.buySeasonPass{value: 0.05 ether}();
+            vm.stopBroadcast();
+
         } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("garnet")) {
             // -- Cannot buy pass on Garnet as minting period is over
             console.log("Skipping buySeasonPass on Garnet");
         } else if (keccak256(abi.encodePacked(vm.envString("DS_NETWORK"))) == keccak256("redstone")) {
-            console.log("Buying buySeasonPass on Mainnet");
+            vm.startBroadcast(vm.envUint("DS_DEPLOY_KEY"));
+            console.log("Buying season pass on Mainnet");
             turfWars.buySeasonPass{value: 0.03 ether}();
+            vm.stopBroadcast();
         }
-        vm.stopBroadcast();
     }
 
     function topUpOrbs(uint256 ssDeployKey, TurfWars turfWars, IERC20Mintable orbToken, uint256 targetAmount) public {
@@ -196,10 +214,10 @@ contract InitTurfWars is Script {
         console.log("TurfWars ETH balance: %s", address(turfWars).balance);
     }
 
-    // function testUpgrade(TurfWars turfWars) public {
-    //     vm.startBroadcast(vm.envUint("DS_DEPLOY_KEY"));
-    //     turfWars.upgradeTo(address(new TurfWarsV2()));
-    //     console.log(TurfWarsV2(payable(turfWars)).newFunction());
-    //     vm.stopBroadcast();
-    // }
+    function upgradeTurfWars(TurfWars turfWars) public {
+        console.log("Upgrading TurfWars contract");
+        vm.startBroadcast(vm.envUint("DS_DEPLOY_KEY"));
+        turfWars.upgradeTo(address(new TurfWars()));
+        vm.stopBroadcast();
+    }
 }

@@ -4,6 +4,9 @@ cp .env-garnet contracts/.env
 
 source .env
 
+# Setting to true will upgrade the TurfWars contract
+export UPGRADE_TW="${UPGRADE_TW:=false}"
+
 ROOT=$(pwd)
 
 if [ "$DEPLOY_DS" = "true" ]
@@ -17,5 +20,9 @@ fi
 cd $ROOT/contracts
 
 # --gas-price 0.00010005
-forge script --rpc-url $RPC_URL --slow --broadcast -vvv script/InitTurfWars.s.sol
-# forge script --rpc-url $RPC_URL -vvv script/InitTurfWars.s.sol
+if [ "$BROADCAST" = "true" ]
+then
+    forge script --rpc-url $RPC_URL --slow --broadcast -vvv script/InitTurfWars.s.sol
+else
+    forge script --rpc-url $RPC_URL --slow -vvv script/InitTurfWars.s.sol
+fi

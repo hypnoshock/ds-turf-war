@@ -6,4 +6,5 @@ interface ITurfWars {
     function isAddressWinner(address playerAddress, bytes32 matchEntity) external view returns (bool);
     function startBattle(string memory name, bytes32 firstMatchInWindow, bytes32 matchID, bytes32 level) external;
     function hasAnyPlayerJoinedMatch(bytes32 matchEntity) external view returns (bool);
+    function startPrivateBattle(string memory name, bytes32 firstMatchInWindow, bytes32 matchID, bytes32 level, address[] memory allowedAddresses) external;
 }

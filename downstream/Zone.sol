@@ -8,7 +8,7 @@ import {Schema, CombatWinState, Node, Q, R, S, BLOCK_TIME_SECS} from "@ds/schema
 import {ZoneKind} from "@ds/ext/ZoneKind.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {LibUtils} from "./LibUtils.sol";
-import {IZone, GAME_STATE, HAMMER_ITEM} from "./IZone.sol";
+import {IZone, GAME_STATE, HAMMER_ITEM, TEAM_A, TEAM_B} from "./IZone.sol";
 import "@ds/utils/LibString.sol";
 
 using Schema for State;
@@ -26,9 +26,6 @@ contract TurfWarsZone is ZoneKind, IZone {
         A,
         B
     }
-
-    string constant TEAM_A = "teamA";
-    string constant TEAM_B = "teamB";
 
     int16 constant DEFAULT_CLAIM_RANGE = 2;
     uint64 constant DEFAULT_GAME_DURATION_BLOCKS = (15 * 60) / BLOCK_TIME_SECS;

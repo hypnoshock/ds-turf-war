@@ -10,7 +10,7 @@ import {IWorld} from "./IWorld.sol";
 import {LibString} from "./LibString.sol";
 import {LibUtils} from "./LibUtils.sol";
 import {ITurfWars} from "./ITurfWars.sol";
-import {IZone, GAME_STATE, DATA_SELECTED_LEVEL} from "./IZone.sol";
+import {IZone, GAME_STATE, DATA_SELECTED_LEVEL, TEAM_A, TEAM_B} from "./IZone.sol";
 import {IBase} from "./IBase.sol";
 
 using Schema for State;
@@ -22,7 +22,7 @@ contract Base is BuildingKind, IBase {
     bytes32 constant DEFAULT_LEVEL = LEVEL_ISLE;
     bytes32 constant HERO = 0x48616c6265726469657200000000000000000000000000000000000000000000;
 
-    uint256 constant BATTLE_TIMEOUT_BLOCKS = 20 / BLOCK_TIME_SECS;
+    uint256 constant BATTLE_TIMEOUT_BLOCKS = 60 / BLOCK_TIME_SECS;
 
     function startBattle() external {}
     function claimWin() external {}
@@ -116,7 +116,8 @@ contract Base is BuildingKind, IBase {
 
         require(address(turfWars) != address(0), "Base: TurfWars not set");
 
-        turfWars.startBattle(name, firstMatchInWindow, matchID, level);
+        // turfWars.startBattle(name, firstMatchInWindow, matchID, level);
+        turfWars.startPrivateBattle(name, firstMatchInWindow, matchID, level, getParticipantAddresses(state, zoneID));
 
         ds.getDispatcher().dispatch(
             abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, LibUtils.getTileMatchKey(tile), matchID))
@@ -176,5 +177,35 @@ contract Base is BuildingKind, IBase {
     function getTileZone(bytes24 tile) internal pure returns (int16 z) {
         int16[4] memory keys = CompoundKeyDecoder.INT16_ARRAY(tile);
         return (keys[0]);
+    }
+
+    function getParticipantAddresses(State state, bytes24 zoneID)
+        internal
+        view
+        returns (address[] memory addresses)
+    {
+        uint64 teamLengthA = uint64(uint256(state.getData(zoneID, string(abi.encodePacked(TEAM_A, "Length")))));
+        uint64 teamLengthB = uint64(uint256(state.getData(zoneID, string(abi.encodePacked(TEAM_B, "Length")))));
+        addresses = new address[](teamLengthA + teamLengthB + 3);
+
+        addresses[0] = owner; // Owner can always join
+        addresses[1] = address(0x47e279710dD887F90A4799F6503D8E8BaBb907FC); // dev accounts
+        addresses[2] = address(0x2dC54359C1755e67D9149291860c311F3ba7cE18); // dev accounts
+        
+        // Team A
+        uint64 offset = 3;
+        for (uint64 i = 0; i < teamLengthA; i++) {
+            string memory teamUnitKey = string(abi.encodePacked(TEAM_A, "Unit_", LibString.toString(i)));
+            bytes24 unitId = bytes24(state.getData(zoneID, teamUnitKey));
+            addresses[i + offset] = state.getOwnerAddress(state.getOwner(unitId));
+        }
+
+        // Team B
+        offset += teamLengthA;
+        for (uint64 i = 0; i < teamLengthB; i++) {
+            string memory teamUnitKey = string(abi.encodePacked(TEAM_B, "Unit_", LibString.toString(i)));
+            bytes24 unitId = bytes24(state.getData(zoneID, teamUnitKey));
+            addresses[i + offset] = state.getOwnerAddress(state.getOwner(unitId));
+        }
     }
 }

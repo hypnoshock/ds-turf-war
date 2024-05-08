@@ -10,6 +10,7 @@ import {IZone} from "downstream/IZone.sol";
 import {Game} from "ds/IGame.sol";
 import {IWorld} from "./codegen/world/IWorld.sol";
 import {IERC20Mintable} from "@latticexyz/world-modules/src/modules/erc20-puppet/IERC20Mintable.sol";
+import {ResourceId} from "@latticexyz/store/src/ResourceId.sol";
 import {StoreSwitch} from "@latticexyz/store/src/StoreSwitch.sol";
 import {ITurfWars} from "downstream/ITurfWars.sol";
 
@@ -20,6 +21,7 @@ contract TurfWars is ITurfWars, Initializable, OwnableUpgradeable, UUPSUpgradeab
     IWorld public world;
     IERC20Mintable public orbToken;
     IBase public baseBuilding;
+    ResourceId constant ALLOW_LIST_SYSTEM_ID = ResourceId.wrap(0x73790000000000000000000000000000416c6c6f774c69737453797374656d00);
 
     // -- Might need these if I have to buy the season pass from this contract
     fallback() external payable {}
@@ -68,6 +70,15 @@ contract TurfWars is ITurfWars, Initializable, OwnableUpgradeable, UUPSUpgradeab
 
     function startBattle(string memory name, bytes32 firstMatchInWindow, bytes32 matchID, bytes32 level) public onlyBaseBuilding {
         world.createMatch(name, firstMatchInWindow, matchID, level);
+        world.copyMap(matchID);
+    }
+
+    function startPrivateBattle(string memory name, bytes32 firstMatchInWindow, bytes32 matchID, bytes32 level, address[] memory allowedAddresses) public onlyBaseBuilding {
+        uint256[] memory rewardPercentages = new uint256[](2);
+        // rewardPercentages[0] = 100;
+
+        world.createMatchSeasonPass(name, firstMatchInWindow, matchID, level, ALLOW_LIST_SYSTEM_ID, 0, rewardPercentages);
+        world.setMembers(matchID, allowedAddresses);
         world.copyMap(matchID);
     }
 
