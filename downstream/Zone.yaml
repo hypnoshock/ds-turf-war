@@ -3,7 +3,7 @@ kind: ZoneKind
 spec:
   name: Turf Wars
   description: Fight to paint the map! Battles are played out in Sky Strife.
-  url: https://imgur.com/RWJ2vBU
+  url: https://i.imgur.com/RWJ2vBU.png
   contract:
     file: ./Zone.sol
   plugin:
