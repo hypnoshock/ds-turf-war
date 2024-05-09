@@ -3,6 +3,8 @@ kind: Item
 spec:
   name: TW Trophy
   icon: 26-23
+  contract:
+    file: ./Trophy.sol
   goo:
     red: 1
     green: 75

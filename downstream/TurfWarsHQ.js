@@ -37,8 +37,14 @@ export default async function update(state, block) {
     };
   }
 
-  const { teamAPlayers, teamBPlayers, dirtyTiles, gameState } =
-    getTurfWarsState(state, block, state.world);
+  const {
+    teamAPlayers,
+    teamBPlayers,
+    teamATiles,
+    teamBTiles,
+    dirtyTiles,
+    gameState,
+  } = getTurfWarsState(state, block, state.world);
 
   const isPlayerTeamA = teamAPlayers.some(
     (unitId) => mobileUnit?.id.toLowerCase() == unitId.toLowerCase()
@@ -132,14 +138,30 @@ export default async function update(state, block) {
       return;
     }
 
-    ds.dispatch({
-      name: "BUILDING_USE",
-      args: [
-        selectedBuilding.id,
-        mobileUnit.id,
-        ds.encodeCall("function claimPrizes()", []),
-      ],
-    });
+    const baseBuildingIds = getBuildingsByType(buildings, "TW Base").map(
+      (b) => b.id
+    );
+
+    ds.dispatch(
+      {
+        name: "BUILDING_USE",
+        args: [
+          selectedBuilding.id,
+          mobileUnit.id,
+          ds.encodeCall("function claimPrizes()", []),
+        ],
+      },
+      {
+        name: "ZONE_USE",
+        args: [
+          mobileUnit.id,
+          ds.encodeCall("function reset(bytes24[], bytes24[])", [
+            dirtyTiles,
+            baseBuildingIds,
+          ]),
+        ],
+      }
+    );
   };
 
   const resetGame = () => {
@@ -162,6 +184,7 @@ export default async function update(state, block) {
   };
 
   const buttons = [];
+  let html = "";
   switch (gameState) {
     case GAME_STATE_NOT_STARTED: {
       if (!isPlayerTeamA && !isPlayerTeamB) {
@@ -172,6 +195,7 @@ export default async function update(state, block) {
           disabled: !!!mobileUnit,
         });
       } else {
+        html = `<h2>Game Not Started</h2><p>You are on ${isPlayerTeamA ? "🟡Yellow" : "🔴Red"} Team</p>`;
         buttons.push({
           text: "Move to Start Tile",
           type: "action",
@@ -181,8 +205,8 @@ export default async function update(state, block) {
       }
       break;
     }
-    case GAME_STATE_FINISHED:
     case GAME_STATE_IN_PROGRESS: {
+      html = `<h2>Game in Progress</h2><h3>Score</h3><p>🟡Yellow Team: ${teamATiles.length}</p><p>🔴Red Team: ${teamBTiles.length}</p>`;
       if (isPlayerTeamA || isPlayerTeamB) {
         buttons.push({
           text: "Reset Game",
@@ -190,13 +214,17 @@ export default async function update(state, block) {
           action: resetGame,
           disabled: !!!mobileUnit,
         });
-        buttons.push({
-          text: "Claim Prizes",
-          type: "action",
-          action: claimPrizes,
-          disabled: getDataBool(state.world, DATA_HAS_CLAIMED_PRIZES),
-        });
       }
+      break;
+    }
+    case GAME_STATE_FINISHED: {
+      html = `<h2>Game Over</h2><p><h3>Score</h3><p>🟡Yellow Team: ${teamATiles.length}</p><p>🔴Red Team: ${teamBTiles.length}</p><h2>${getWinText(teamATiles.length, teamBTiles.length)}</h2>${teamATiles.length != teamBTiles.length ? "<p>Prizes will be distributed to the winning team</p>" : ""}`;
+      buttons.push({
+        text: "Reset Game",
+        type: "action",
+        action: claimPrizes,
+        disabled: getDataBool(state.world, DATA_HAS_CLAIMED_PRIZES),
+      });
       break;
     }
   }
@@ -211,13 +239,20 @@ export default async function update(state, block) {
           {
             id: "default",
             type: "inline",
-            html: ``,
+            html,
             buttons,
           },
         ],
       },
     ],
   };
+}
+
+function getWinText(teamAScore, teamBScore) {
+  if (teamAScore === teamBScore) {
+    return "It's a draw!";
+  }
+  return teamAScore > teamBScore ? "Yellow Wins!" : "Red Wins!";
 }
 
 // copied from Zone.js

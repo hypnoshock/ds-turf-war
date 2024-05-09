@@ -4,12 +4,13 @@ A game built on Downstream which uses Sky Strife as the combat layer. This was H
 
 ## The Game
 
-Main Mechanic: Paint the zone tiles by walking on them and score a point for your team. Secure areas by placing a base building for your team, so no other team can place a building there.
-Recover secured areas by starting a battle on the enemy's base building; this will initiate a sky strife match. If the winner is the building owner, nothing happens; if the winner is the opponent, the building gets destroyed, and the tiles around it get painted in the opponent's color.
-The opponent can then secure the area by placing a building.
-If no secure building was placed, one team can place a building on the other's color and secure the area, but only if it's already painted.
+Fight to paint the map!
 
-The buildings are not going to be that easy to build; players only start with materials for 1 or 2 buildings, and then need to destroy other players' buildings to recover some materials
+- Move to an unpainted tile to paint it for your team
+- Building a "Turf Wars Base" will paint all unpainted squares in a large radius
+- Start a game of Sky Strife at any base. The winner will paint all tiles around it
+
+The team with the most painted tiles when the timer ends is the winner
 
 ## The Techicals
 
@@ -47,7 +48,7 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 ## To-do
 
 - [ ] Win state (Which side has the most tiles after the timer has run out)
-  - [ ] Medals for winning (air drop if possible)
+  - [x] Medals for winning (air drop if possible)
 - [ ] UI
   - [ ] Clearer which team you're on when clicking the start buildings
   - [ ] Being able to leave after joining (Big task due to the way we manage the team list)
@@ -108,3 +109,5 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 ## Problems
 
 - The first match in window can't be worked out in the DS client because we don't have ability to make contract calls. Presently I'm finding this match during deployment and setting it on the building contract.
+- ORBs are required to make matches therefore the intermediary contract is stocked up with ORBs. There is no mechanism for the ORBs gained from a match to go back to the contract so it'll run out.
+  - Maybe it's possible for the players to play with a proxy address instead of their address so the orbs go back to contracts that belong to the game
