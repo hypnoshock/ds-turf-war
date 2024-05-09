@@ -54,6 +54,7 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
   - [ ] Choosing your team instead of being assigned a team
 - [ ] Resetting
   - [ ] Decide when it's possible to reset the game.
+  - [ ] Can anyone reset the game?
 - [ ] Internal book keeping for hammers so players can't play with more hammers than they started with
 - [ ] Auto burn excess hammers on join
 - [ ] Configurable matches

@@ -6,6 +6,8 @@ spec:
   description: "Welcome to Turf Wars. From this building you can join a team."
   model: 02-07
   color: 5
+  contract:
+    file: ./TurfWarsHQ.sol
   plugin:
     file: ./TurfWarsHQ.js
     alwaysActive: false

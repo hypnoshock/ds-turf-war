@@ -8,7 +8,7 @@ import {Schema, CombatWinState, Node, Q, R, S, BLOCK_TIME_SECS} from "@ds/schema
 import {ZoneKind} from "@ds/ext/ZoneKind.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {LibUtils} from "./LibUtils.sol";
-import {IZone, GAME_STATE, HAMMER_ITEM, TEAM_A, TEAM_B} from "./IZone.sol";
+import {IZone, GAME_STATE, HAMMER_ITEM, PRIZE_ITEM, TEAM_A, TEAM_B, DATA_HAS_CLAIMED_PRIZES} from "./IZone.sol";
 import "@ds/utils/LibString.sol";
 
 using Schema for State;
@@ -28,7 +28,7 @@ contract TurfWarsZone is ZoneKind, IZone {
     }
 
     int16 constant DEFAULT_CLAIM_RANGE = 2;
-    uint64 constant DEFAULT_GAME_DURATION_BLOCKS = (15 * 60) / BLOCK_TIME_SECS;
+    uint64 constant DEFAULT_GAME_DURATION_BLOCKS = 15 * 60 / BLOCK_TIME_SECS; // (15 * 60) 
     uint64 constant DEFAULT_HAMMER_COUNT = 2;
 
     // Data keys
@@ -66,7 +66,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         bytes24 zoneID = Node.Zone(originZ);
 
         State state = ds.getState();
-        if (_getGameState(state, zoneID) != GAME_STATE.IN_PROGRESS) {
+        if (getGameState(state, zoneID) != GAME_STATE.IN_PROGRESS) {
             return;
         }
 
@@ -111,7 +111,7 @@ contract TurfWarsZone is ZoneKind, IZone {
 
     function _setReady(Game ds, State state, bytes24 mobileUnitID, bytes24 zoneID) private {
         // Check if game is already in progress
-        if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) != GAME_STATE.NOT_STARTED) {
+        if (getGameState(state, zoneID) != GAME_STATE.NOT_STARTED) {
             revert("Game already in progress");
         }
 
@@ -153,7 +153,7 @@ contract TurfWarsZone is ZoneKind, IZone {
 
     function _unsetReady(Game ds, State state, bytes24 mobileUnitID, bytes24 zoneID) private {
         // Check if game is already in progress
-        if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) != GAME_STATE.NOT_STARTED) {
+        if (getGameState(state, zoneID) != GAME_STATE.NOT_STARTED) {
             revert("Game already in progress");
         }
 
@@ -176,12 +176,12 @@ contract TurfWarsZone is ZoneKind, IZone {
 
     function _join(Game ds, State state, bytes24 unitID, bytes24 zoneID, bytes24 hqTileID) private {
         // check game not in progress
-        if (GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE))) != GAME_STATE.NOT_STARTED) {
+        if (getGameState(state, zoneID) != GAME_STATE.NOT_STARTED) {
             revert("Cannot join game in progress");
         }
 
         // Check if unit has already joined
-        if (_isUnitInTeam(state, zoneID, TEAM_A, unitID) || _isUnitInTeam(state, zoneID, TEAM_B, unitID)) {
+        if (LibUtils.isUnitInTeam(state, zoneID, TEAM_A, unitID) || LibUtils.isUnitInTeam(state, zoneID, TEAM_B, unitID)) {
             revert("Already joined");
         }
 
@@ -201,11 +201,31 @@ contract TurfWarsZone is ZoneKind, IZone {
     }
 
     function _spawnHammer(Game ds, bytes24 tileID, uint64 count) private {
+        _spawnItem(ds.getDispatcher(), tileID, HAMMER_ITEM, count);
+    }
+
+    // TODO: restrict to TurfWarsHQ
+    function spawnPrizes(Game ds, bytes24 tileID, uint64 count) public {
+        // address hqImpl = ds.getState().getImplementation(TURFWARS_HQ);
+        // require(msg.sender == hqImpl, "Only TurfWarsHQ can call this");
+
+        _spawnItem(ds.getDispatcher(), tileID, PRIZE_ITEM, count);
+    }
+
+    // TODO: restrict to TurfWarsHQ
+    function setHasClaimedPrizes(Game ds, bytes24 zoneID) external {
+        // address hqImpl = ds.getState().getImplementation(TURFWARS_HQ);
+        // require(msg.sender == hqImpl, "Only TurfWarsHQ can call this");
+
+        _setDataOnZone(ds.getDispatcher(), zoneID, DATA_HAS_CLAIMED_PRIZES, bytes32(uint256(1)));
+    }
+
+    function _spawnItem(Dispatcher dispatcher, bytes24 tileID, bytes24 item, uint64 count) private {
         (int16 z, int16 q, int16 r, int16 s) = getTileCoords(tileID);
 
         bytes24[] memory items = new bytes24[](4);
         uint64[] memory balances = new uint64[](4);
-        items[0] = HAMMER_ITEM;
+        items[0] = item;
         items[1] = bytes24(0);
         items[2] = bytes24(0);
         items[3] = bytes24(0);
@@ -214,7 +234,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         balances[2] = 0;
         balances[3] = 0;
 
-        ds.getDispatcher().dispatch(
+        dispatcher.dispatch(
             abi.encodeCall(
                 Actions.DEV_SPAWN_BAG,
                 (
@@ -228,7 +248,6 @@ contract TurfWarsZone is ZoneKind, IZone {
                 )
             )
         );
-
     }
 
     function _assignUnitToTeam(Game ds, string memory team, uint64 teamLength, bytes24 unitID, bytes24 zoneID)
@@ -259,26 +278,12 @@ contract TurfWarsZone is ZoneKind, IZone {
         );
     }
 
-    function _isUnitInTeam(State state, bytes24 zoneID, string memory teamPrefix, bytes24 unitId)
-        private
-        view
-        returns (bool)
-    {
-        uint64 teamLength = uint64(uint256(state.getData(zoneID, string(abi.encodePacked(teamPrefix, "Length")))));
-        // check every slot for unit id
-        for (uint64 i = 0; i < teamLength; i++) {
-            string memory teamUnitIndex = string(abi.encodePacked(teamPrefix, "Unit_", LibString.toString(i)));
-            if (bytes24(state.getData(zoneID, teamUnitIndex)) == unitId) {
-                return true;
-            }
-        }
-        return false;
-    }
+
 
     function _getUnitTeam(State state, bytes24 zoneID, bytes24 unitId) private view returns (Team) {
-        if (_isUnitInTeam(state, zoneID, TEAM_A, unitId)) {
+        if (LibUtils.isUnitInTeam(state, zoneID, TEAM_A, unitId)) {
             return Team.A;
-        } else if (_isUnitInTeam(state, zoneID, TEAM_B, unitId)) {
+        } else if (LibUtils.isUnitInTeam(state, zoneID, TEAM_B, unitId)) {
             return Team.B;
         }
         return Team.NONE;
@@ -290,21 +295,34 @@ contract TurfWarsZone is ZoneKind, IZone {
     }
 
     // TODO: Only a player or owner can call this
-    // TODO: check zone IDs in dirtyTiles belong to the zone
     function _reset(Game ds, State state, bytes24 zoneID, bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings)
         internal
     {
         Dispatcher dispatcher = ds.getDispatcher();
+        bool isFinished = true; //getGameState(state, zoneID) == GAME_STATE.FINISHED;
 
         // Reset winner on each tile
+        uint256 teamAScore = 0;
+        uint256 teamBScore = 0;
         for (uint256 i = 0; i < dirtyTiles.length; i++) {
             bytes24 tile = dirtyTiles[i];
             (int16 tileZoneKey,,,) = getTileCoords(tile);
             bytes24 tileZone = Node.Zone(tileZoneKey);
             require(tileZone == zoneID, "Tile not in zone");
-            if (_hasTileBeenWon(ds, tile, tileZone)) {
+            bytes24 winningUnit = bytes24(ds.getState().getData(zoneID, LibUtils.getTileWinnerKey(tile)));
+            if (winningUnit != bytes24(0)) {
+                if (isFinished && LibUtils.isUnitInTeam(state, zoneID, TEAM_A, winningUnit)) {
+                    teamAScore++;
+                } else {
+                    teamBScore++;
+                }
+
                 _setTileWinner(ds, tile, bytes24(0), tileZone);
             }
+        }
+
+        if (isFinished) {
+            // _awardPrizes(dispatcher, state, zoneID, teamAScore > teamBScore ? TEAM_A : TEAM_B);
         }
 
         // Destroy all base buildings
@@ -320,27 +338,30 @@ contract TurfWarsZone is ZoneKind, IZone {
         _setDataOnZone(dispatcher, zoneID, string(abi.encodePacked(TEAM_B, "Length")), bytes32(0));
         _setDataOnZone(dispatcher, zoneID, DATA_READY, bytes32(uint256(Team.NONE)));
         _setDataOnZone(dispatcher, zoneID, DATA_END_BLOCK, bytes32(uint256(block.number)));
+        _setDataOnZone(dispatcher, zoneID, DATA_HAS_CLAIMED_PRIZES, bytes32(0));
     }
 
     // -- Hooks
 
     function onUnitArrive(Game ds, bytes24 zoneID, bytes24 mobileUnitID) external override {
         State state = ds.getState();
-        // address playerAddress = state.getOwnerAddress(player);
         bytes24 mobileUnitTile = state.getCurrentLocation(mobileUnitID, uint64(block.number));
-        (int16 z,,,) = getTileCoords(mobileUnitTile);
+        // (int16 z,,,) = getTileCoords(mobileUnitTile);
 
-        GAME_STATE gameState = _getGameState(state, zoneID);
+        GAME_STATE gameState = getGameState(state, zoneID);
 
         if (gameState == GAME_STATE.NOT_STARTED) {
+
+            // NOTE: Contract at size limit. Removing movement restrictions for now
+
             // -- Unit move locking
             // bytes24 centerTile = Node.Tile(z, 0, 0, 0);
             // if (mobileUnitTile == centerTile) {
             //     return;
             // }
 
-            // bool isTeamA = _isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID);
-            // bool isTeamB = _isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
+            // bool isTeamA = LibUtils.isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID);
+            // bool isTeamB = LibUtils.isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
 
             // // Units who are on a team are allowed to move to the starting positions
             // // TODO: Make these positions configurable / dynamic
@@ -363,7 +384,7 @@ contract TurfWarsZone is ZoneKind, IZone {
             // revert("Unit cannot move, Game not started");
         } else if (gameState == GAME_STATE.IN_PROGRESS) {
             bool isUnitInTeam =
-                _isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID) || _isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
+                LibUtils.isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID) || LibUtils.isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
             require(isUnitInTeam, "Cannot move, unit not on a team");
 
             // Claim unclaimed tile
@@ -371,22 +392,25 @@ contract TurfWarsZone is ZoneKind, IZone {
                 _setTileWinner(ds, mobileUnitTile, mobileUnitID, zoneID);
             }
         } else if (gameState == GAME_STATE.FINISHED) {
-            bytes24 centerTile = Node.Tile(z, 0, 0, 0);
-            if (mobileUnitTile == centerTile) {
-                return;
-            }
+            // NOTE: Contract at size limit. Removing movement restrictions for now
 
-            // Units already in zone are allowed to walk back to the centre
-            bytes24 mobileUnitPrevTile = state.getPrevLocation(mobileUnitID);
-            (int16 prevZ,,,) = getTileCoords(mobileUnitTile);
-            if (prevZ == z && mobileUnitPrevTile != centerTile) {
-                return;
-            }
+            // bytes24 centerTile = Node.Tile(z, 0, 0, 0);
+            // if (mobileUnitTile == centerTile) {
+            //     return;
+            // }
 
-            revert("Unit cannot move, game must be reset first");
+            // // Units already in zone are allowed to walk back to the centre
+            // bytes24 mobileUnitPrevTile = state.getPrevLocation(mobileUnitID);
+            // (int16 prevZ,,,) = getTileCoords(mobileUnitTile);
+            // if (prevZ == z && mobileUnitPrevTile != centerTile) {
+            //     return;
+            // }
+
+            // revert("Unit cannot move, game must be reset first");
         }
     }
 
+    // NOTE: Contract close to size limit. This can get dropped if we need more space
     function onCombatStart(Game, /*ds*/ bytes24, /*zoneID*/ bytes24, /*mobileUnitID*/ bytes24 /*sessionID*/ )
         external
         pure
@@ -396,25 +420,21 @@ contract TurfWarsZone is ZoneKind, IZone {
     }
 
     
-    // NOTE: Contract close to size limit. This can get dropped if we need more space
+    // NOTE: Contract close to size limit. This can get dropped if we need more space. Below is ~500bytes
     bytes24 constant BASE_BUILDING = 0xbe92755c00000000000000003e4de83a0000000000000004;
     function onContructBuilding(Game ds, bytes24 zoneID, bytes24 /*mobileUnitID*/, bytes24 buildingInstance)
         external
         override
     {
         State state = ds.getState();
-        require (_getGameState(state, zoneID) == GAME_STATE.IN_PROGRESS, "Cannot build until game starts");
+        require (getGameState(state, zoneID) == GAME_STATE.IN_PROGRESS, "Cannot build until game starts");
         bytes24 buildingKind = state.getBuildingKind(buildingInstance);
         require(buildingKind == BASE_BUILDING, "Only base buildings can be constructed in this zone");
     }
 
     // -- Helpers
 
-    function getGameState(State state, bytes24 zoneID) external view returns (GAME_STATE) {
-        return _getGameState(state, zoneID);
-    }
-
-    function _getGameState(State state, bytes24 zoneID) internal view returns (GAME_STATE) {
+    function getGameState(State state, bytes24 zoneID) public view returns (GAME_STATE) {
         GAME_STATE gameState = GAME_STATE(uint256(state.getData(zoneID, DATA_GAME_STATE)));
         if (gameState == GAME_STATE.IN_PROGRESS && block.number >= uint256(state.getData(zoneID, DATA_END_BLOCK))) {
             return GAME_STATE.FINISHED;

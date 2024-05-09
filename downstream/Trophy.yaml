@@ -1,0 +1,10 @@
+---
+kind: Item
+spec:
+  name: TW Trophy
+  icon: 26-23
+  goo:
+    red: 1
+    green: 75
+    blue: 1
+  stackable: true

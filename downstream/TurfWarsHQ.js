@@ -8,6 +8,8 @@ const GAME_STATE_IN_PROGRESS = 1;
 const GAME_STATE_FINISHED = 2;
 const START_HAMMER_QTY = 2;
 
+const DATA_HAS_CLAIMED_PRIZES = "hasClaimedPrizes";
+
 export default async function update(state, block) {
   const buildings = state.world?.buildings || [];
   const mobileUnit = getMobileUnit(state);
@@ -124,6 +126,22 @@ export default async function update(state, block) {
     }
   };
 
+  const claimPrizes = () => {
+    if (!mobileUnit) {
+      console.log("no selected unit");
+      return;
+    }
+
+    ds.dispatch({
+      name: "BUILDING_USE",
+      args: [
+        selectedBuilding.id,
+        mobileUnit.id,
+        ds.encodeCall("function claimPrizes()", []),
+      ],
+    });
+  };
+
   const resetGame = () => {
     console.log("Resetting game");
 
@@ -171,6 +189,12 @@ export default async function update(state, block) {
           type: "action",
           action: resetGame,
           disabled: !!!mobileUnit,
+        });
+        buttons.push({
+          text: "Claim Prizes",
+          type: "action",
+          action: claimPrizes,
+          disabled: getDataBool(state.world, DATA_HAS_CLAIMED_PRIZES),
         });
       }
       break;

@@ -9,7 +9,7 @@ export UPGRADE_TW="${UPGRADE_TW:=false}"
 
 ROOT=$(pwd)
 
-# rm -rf $ROOT/contracts/deployments/deploy-local.json
+rm -rf $ROOT/contracts/deployments/deploy-local.json
 
 if [ "$DEPLOY_DS" = "true" ]
 then
