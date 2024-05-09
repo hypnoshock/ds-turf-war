@@ -54,6 +54,11 @@ export default async function update(state, block) {
     const payload = ds.encodeCall("function claimWin()", []);
     const bagID = generateDevBagId(selectedBuilding.location.tile);
     console.log("bagID", bagID);
+    const [toEquipSlot, toItemSlot] = getCompatibleOrEmptySlot(
+      mobileUnit,
+      "TW Hammer",
+      1
+    );
     ds.dispatch(
       {
         name: "BUILDING_USE",
@@ -64,8 +69,8 @@ export default async function update(state, block) {
         args: [
           mobileUnit.id,
           [selectedBuilding.location.tile.id, mobileUnit.id],
-          [0, 0],
-          [0, 0],
+          [0, toEquipSlot],
+          [0, toItemSlot],
           nullBytes24,
           1, // Claim hammer
         ],
@@ -290,6 +295,36 @@ function generateDevBagId(tile, equipSlot = 0) {
 
   // Yes this is as horrendous as it looks
   return "0xb1c93f09000000000000000000000000" + bagKey64;
+}
+
+function getCompatibleOrEmptySlot(mobileUnit, itemName, quantity = 1) {
+  // First try and find a slot that already has the item
+  for (let bag of mobileUnit.bags) {
+    for (let slot of bag.slots) {
+      if (
+        slot.item.name?.value === itemName &&
+        slot.balance + quantity <= 100
+      ) {
+        console.log("Found compatible slot", bag.equipee.key, slot.key);
+        return [bag.equipee.key, slot.key];
+      }
+    }
+  }
+
+  // Find first empty slot
+  for (let bag of mobileUnit.bags) {
+    if (bag.slots.length < 4) {
+      // find the first unused key
+      let slotKey = 0;
+      while (bag.slots.some((s) => s.key === slotKey)) {
+        slotKey++;
+      }
+      console.log("Found empty slot", bag.equipee.key, slotKey);
+      return [bag.equipee.key, slotKey];
+    }
+  }
+
+  throw "No compatible or empty slot found";
 }
 
 // -- Match Data

@@ -6,6 +6,7 @@ const BLOCK_TIME_SECS = 2;
 const GAME_STATE_NOT_STARTED = 0;
 const GAME_STATE_IN_PROGRESS = 1;
 const GAME_STATE_FINISHED = 2;
+const START_HAMMER_QTY = 2;
 
 export default async function update(state, block) {
   const buildings = state.world?.buildings || [];
@@ -60,7 +61,11 @@ export default async function update(state, block) {
       console.log("Joining Team B");
       startLocation = [0, 5, -5];
     }
-
+    const [toEquipSlot, toItemSlot] = getCompatibleOrEmptySlot(
+      mobileUnit,
+      "TW Hammer",
+      START_HAMMER_QTY
+    );
     ds.dispatch(
       {
         name: "ZONE_USE",
@@ -76,10 +81,10 @@ export default async function update(state, block) {
         args: [
           mobileUnit.id,
           [selectedBuilding.location.tile.id, mobileUnit.id],
-          [0, 0],
-          [0, 0],
+          [0, toEquipSlot],
+          [0, toItemSlot],
           nullBytes24,
-          2,
+          START_HAMMER_QTY,
         ],
       },
       {
@@ -314,6 +319,36 @@ function generateDevBagId(tile, equipSlot = 0) {
 
   // Yes this is as horrendous as it looks
   return "0xb1c93f09000000000000000000000000" + bagKey64;
+}
+
+function getCompatibleOrEmptySlot(mobileUnit, itemName, quantity = 1) {
+  // First try and find a slot that already has the item
+  for (let bag of mobileUnit.bags) {
+    for (let slot of bag.slots) {
+      if (
+        slot.item.name?.value === itemName &&
+        slot.balance + quantity <= 100
+      ) {
+        console.log("Found compatible slot", bag.equipee.key, slot.key);
+        return [bag.equipee.key, slot.key];
+      }
+    }
+  }
+
+  // Find first empty slot
+  for (let bag of mobileUnit.bags) {
+    if (bag.slots.length < 4) {
+      // find the first unused key
+      let slotKey = 0;
+      while (bag.slots.some((s) => s.key === slotKey)) {
+        slotKey++;
+      }
+      console.log("Found empty slot", bag.equipee.key, slotKey);
+      return [bag.equipee.key, slotKey];
+    }
+  }
+
+  throw "No compatible or empty slot found";
 }
 
 // ---- Data functions ----

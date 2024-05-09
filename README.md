@@ -46,15 +46,14 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 
 ## To-do
 
-- [ ] Search for item slot to deposit hammers
+- [ ] Win state (Which side has the most tiles after the timer has run out)
+  - [ ] Medals for winning (air drop if possible)
 - [ ] UI
   - [ ] Clearer which team you're on when clicking the start buildings
-  - [ ] Being able to leave after joining
+  - [ ] Being able to leave after joining (Big task due to the way we manage the team list)
   - [ ] Choosing your team instead of being assigned a team
 - [ ] Resetting
   - [ ] Decide when it's possible to reset the game.
-- [ ] Win state (Which side has the most tiles after the timer has run out)
-  - [ ] Medals for winning (air drop if possible)
 - [ ] Internal book keeping for hammers so players can't play with more hammers than they started with
 - [ ] Auto burn excess hammers on join
 - [ ] Configurable matches
@@ -75,6 +74,7 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 
 ### Done
 
+- [x] Search for item slot to deposit hammers
 - [x] Deploy script to update building and zone impl addresses if they have changed
 - [x] Don't allow the attacker to claim on timeout if the defender has joined the match
 - [x] Look into Sky Strife's private match system and see if we can prevent non TW players from joining

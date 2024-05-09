@@ -395,16 +395,18 @@ contract TurfWarsZone is ZoneKind, IZone {
         revert("Combat not supported in this zone");
     }
 
-    // -- I'd like this in but I'm now over contract size limit
     
-    // bytes24 constant BASE_BUILDING = 0xbe92755c00000000000000003e4de83a0000000000000004;
-    // function onContructBuilding(Game ds, bytes24 /*zoneID*/, bytes24 /*mobileUnitID*/, bytes24 buildingInstance)
-    //     external
-    //     override
-    // {
-    //     bytes24 buildingKind = ds.getState().getBuildingKind(buildingInstance);
-    //     require(buildingKind == BASE_BUILDING, "Only base buildings can be constructed in this zone");
-    // }
+    // NOTE: Contract close to size limit. This can get dropped if we need more space
+    bytes24 constant BASE_BUILDING = 0xbe92755c00000000000000003e4de83a0000000000000004;
+    function onContructBuilding(Game ds, bytes24 zoneID, bytes24 /*mobileUnitID*/, bytes24 buildingInstance)
+        external
+        override
+    {
+        State state = ds.getState();
+        require (_getGameState(state, zoneID) == GAME_STATE.IN_PROGRESS, "Cannot build until game starts");
+        bytes24 buildingKind = state.getBuildingKind(buildingInstance);
+        require(buildingKind == BASE_BUILDING, "Only base buildings can be constructed in this zone");
+    }
 
     // -- Helpers
 
