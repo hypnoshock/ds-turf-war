@@ -57,6 +57,9 @@ contract InitTurfWars is Script {
             uint256 deployerOrbBal = orbToken.balanceOf(ssDeployAddr);
             console.log("Deployer orbs: %s", deployerOrbBal); // 10 ** 18
             console.log("Deployer eth: %s", ssDeployAddr.balance); // 10 ** 18
+            if (address(turfWars) != address(0)) {
+                console.log("TurfWars orbs: %s", orbToken.balanceOf(address(turfWars)));
+            }
         }
 
         // Base building handle
