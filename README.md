@@ -33,42 +33,55 @@ The private keys in the `.env` file are the default `anvil` keys when no mnemoni
 ### Project Layout
 
 The `downstream` folder contains the Downstream building contracts and the map for the game. These are applied to a Downstream zone via the `ds` cli tool.
-( This might changed in the future given the fact that zone/world contracts now exist. )
 
-- The `Judge` building is in charge of starting a game, keeping track of score and painting the claimed tiles the team's colour
-- The `BattleBoy` building is in charge of starting a Sky Strife match, querying the outcome of the match and telling the `Judge` building the winner. It has to be funded with `Orb` tokens to be able to start matches
-- The `Counter` building is what displays score on the map
+The main logic to the game is found in the `Zone` contract. Interactions with this contract are done via the UI found in buildings.
+
+Buildings:
+
+- The `TurWarsHQ` building is frontend only. It's used as a UI interface to join a team and reset the game.
+- The `Base` building the interface to starting matches and claiming wins via the intermediary `TurfWars` contract.
+- The `StartBuilding` has two yaml files for each of the team's starting positions. It is frontend only and is used as an interface to set a team as ready
 
 The `contracts` folder contains the `InitTurfWars.s.sol` script which uses interfaces from Downstream and Skystrife to make the two Downstream buildings aware of each other, get the address of the Sky Strife `Orb` token and fund the battle building with orbs so that it is able to create matches.
 
 ## To-do
 
-- [ ] Successfully defending your tower shouldn't destroy it (or maybe it should, can't decide if it's fun that you can relocate)
-- [ ] Don't allow the attacker to claim on timeout if the defender has joined the match
 - [ ] Search for item slot to deposit hammers
-- [ ] Don't allow join if player has hammers
-- [ ] Auto burn hammers on join
+- [ ] UI
+  - [ ] Clearer which team you're on when clicking the start buildings
+  - [ ] Being able to leave after joining
+  - [ ] Choosing your team instead of being assigned a team
+- [ ] Resetting
+  - [ ] Decide when it's possible to reset the game.
 - [ ] Win state (Which side has the most tiles after the timer has run out)
-- [ ] Prize pool (orbs?)
-- [ ] Eth and orb withdrawal on mediator contract
-- [ ] Fix deploy script to work with Garnet
-  - [x] Don't redeploy interim script
-  - [ ] Initial deploy of interim script to be done by zone contract
-- [ ] Choosing your team instead of being assigned a team
+  - [ ] Medals for winning (air drop if possible)
+- [ ] Internal book keeping for hammers so players can't play with more hammers than they started with
+- [ ] Auto burn excess hammers on join
 - [ ] Configurable matches
   - [ ] Size of claimed area
   - [ ] Match length
   - [ ] Auto tile painting
   - [ ] Number of buildings you can construct
-  - [ ] Allow construction of blockers
-  - [ ] Secure mode where placing building doesn't claim the tiles but allows the team to claim (doesn't override secured tiles from the other team)
-- [ ] Restrict construction to bases and blockers (if allowed)
-- [ ] Look into Sky Strife's private match system and see if we can prevent non TW players from joining
-- [ ] Finish TurfWars contract
+
+### Nice to have
+
+- [ ] Start positions not to be hardcoded
+- [ ] Security around who can start battles
   - [ ] Don't allow battles to be started by non Turf Wars players
   - [ ] Don't allow battles to be started until the game starts
-  - [ ] Deploy script to update building and zone impl addresses if they have changed
 - [ ] Orb to DS item bridge?
+- [ ] Restrict construction to bases and blockers (if allowed)
+- [ ] Prize pool
+
+### Done
+
+- [x] Deploy script to update building and zone impl addresses if they have changed
+- [x] Don't allow the attacker to claim on timeout if the defender has joined the match
+- [x] Look into Sky Strife's private match system and see if we can prevent non TW players from joining
+- [x] Eth and orb withdrawal on mediator contract
+- [x] Fix deploy script to work with Garnet
+  - [x] Don't redeploy interim script
+  - [ ] Initial deploy of interim script to be done by zone contract
 - [x] Tidy up empty bags (the whole spawning bag, transferring item and destroying bag is probably VERY gassy)
 - [x] If placing a battle building down on an unoccupied tile, the player can gain that tile after a period of time of they are not challenged
 - [x] Raise cost of base building so you can only build 1 or 2
@@ -81,6 +94,9 @@ The `contracts` folder contains the `InitTurfWars.s.sol` script which uses inter
 
 ## Gameplay ideas
 
+- [ ] Allow construction of blockers
+- [ ] Secure mode where placing building doesn't claim the tiles but allows the team to claim (doesn't override secured tiles from the other team)
+- [ ] Successfully defending your tower shouldn't destroy it (or maybe it should, can't decide if it's fun that you can relocate)
 - [ ] Random spawn of powerups
   - [ ] Freeze opponents for x blocks
 - [ ] Placing a building down doesn't paint tiles, it just secures the area meaning the opposing team cannot paint there

@@ -150,17 +150,6 @@ contract Base is BuildingKind, IBase {
             require(uint256(state.getData(buildingInstance, LibUtils.getTileMatchTimeoutBlockKey(tile))) < block.number , "Match has not timed out, cannot claim win yet");
         }
 
-
-        // else if the match has timed out then the player can claim the win
-
-        // Enforce the claimer is the winner if the battle has ended
-        // TODO: check if battle started rather than checking for winner
-        // if (|| turfWars.getWinningPlayer(matchID) != bytes32(0)) {
-            
-        // }
-
-        // TODO: Don't allow claiming if the tile already belongs to the claimer's team
-
         ds.getDispatcher().dispatch(
             abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, tileMatchKey, bytes32(0)))
         );
