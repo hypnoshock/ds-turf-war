@@ -12,7 +12,7 @@ const NETWORK = "local";
 
 const SS_URL_LOCAL = "http://localhost:1337";
 const SS_URL_GARNET = "https://aa.skystrife.xyz";
-const SS_URL_REDSTONE = "https://play.skystrife.xyz/";
+const SS_URL_REDSTONE = "https://play.skystrife.xyz";
 
 export default async function update(state, block) {
   //   const buildings = state.world?.buildings || [];

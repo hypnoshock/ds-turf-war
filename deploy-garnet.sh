@@ -19,10 +19,10 @@ fi
 
 cd $ROOT/contracts
 
-# --gas-price 0.00010005
+# 0.00010006(gwei) == 100060(wei)
 if [ "$BROADCAST" = "true" ]
 then
-    forge script --rpc-url $RPC_URL --slow --broadcast -vvv script/InitTurfWars.s.sol
+    forge script --rpc-url $RPC_URL --with-gas-price 100060 --slow --broadcast -vvv script/InitTurfWars.s.sol
 else
-    forge script --rpc-url $RPC_URL --slow -vvv script/InitTurfWars.s.sol
+    forge script --rpc-url $RPC_URL --with-gas-price 100060 --slow -vvv script/InitTurfWars.s.sol
 fi
