@@ -78,18 +78,19 @@ contract Base is BuildingKind, IBase {
         State state = ds.getState();
 
         bytes24 tile = state.getFixedLocation(buildingInstance);
-        bytes24 zone = Node.Zone(getTileZone(tile));
-        uint256 timeoutBlock = uint256(state.getData(buildingInstance, LibUtils.getTileMatchTimeoutBlockKey(tile)));
 
+
+        uint256 timeoutBlock = uint256(state.getData(buildingInstance, LibUtils.getTileMatchTimeoutBlockKey(tile)));
         require (timeoutBlock != 0, "Match has not started yet");
         require(timeoutBlock < block.number , "Match has not timed out, cannot claim win yet");
-
-        IZone zoneImpl = IZone(state.getImplementation(zone));
-        zoneImpl.setAreaWinner(ds, tile, actor, true);
-
+        
         ds.getDispatcher().dispatch(
             abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, LibUtils.getTileMatchTimeoutBlockKey(tile), bytes32(0)))
         );
+
+        bytes24 zone = Node.Zone(getTileZone(tile));
+        IZone zoneImpl = IZone(state.getImplementation(zone));
+        zoneImpl.setAreaWinner(ds, tile, actor, true);
     }
 
     function getTileZone(bytes24 tile) internal pure returns (int16 z) {
