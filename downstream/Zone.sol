@@ -299,7 +299,11 @@ contract TurfWarsZone is ZoneKind, IZone {
         internal
     {
         Dispatcher dispatcher = ds.getDispatcher();
-        bool isFinished = true; //getGameState(state, zoneID) == GAME_STATE.FINISHED;
+        
+        // TODO: If game is finished, check that claims have been made before allowing reset
+        // if (getGameState(state, zoneID) == GAME_STATE.FINISHED) {
+        //     require(state.getData(zoneID, DATA_HAS_CLAIMED_PRIZES) == bytes32(uint256(1)));
+        // }
 
         // Reset winner on each tile
         uint256 teamAScore = 0;
@@ -311,7 +315,7 @@ contract TurfWarsZone is ZoneKind, IZone {
             require(tileZone == zoneID, "Tile not in zone");
             bytes24 winningUnit = bytes24(ds.getState().getData(zoneID, LibUtils.getTileWinnerKey(tile)));
             if (winningUnit != bytes24(0)) {
-                if (isFinished && LibUtils.isUnitInTeam(state, zoneID, TEAM_A, winningUnit)) {
+                if (LibUtils.isUnitInTeam(state, zoneID, TEAM_A, winningUnit)) {
                     teamAScore++;
                 } else {
                     teamBScore++;
@@ -321,16 +325,14 @@ contract TurfWarsZone is ZoneKind, IZone {
             }
         }
 
-        if (isFinished) {
-            // _awardPrizes(dispatcher, state, zoneID, teamAScore > teamBScore ? TEAM_A : TEAM_B);
-        }
-
         // Destroy all base buildings
         for (uint256 i = 0; i < baseBuildings.length; i++) {
             bytes24 buildingTile = state.getFixedLocation(baseBuildings[i]);
             (int16 z, int16 q, int16 r, int16 s) = getTileCoords(buildingTile);
             require(Node.Zone(z) == zoneID, "Base building not in zone");
             dispatcher.dispatch(abi.encodeCall(Actions.DEV_DESTROY_BUILDING, (z, q, r, s)));
+
+            // TODO: if timeoutblock set then set to zero
         }
 
         _setDataOnZone(dispatcher, zoneID, DATA_GAME_STATE, bytes32(uint256(GAME_STATE.NOT_STARTED)));
@@ -401,7 +403,7 @@ contract TurfWarsZone is ZoneKind, IZone {
 
             // // Units already in zone are allowed to walk back to the centre
             // bytes24 mobileUnitPrevTile = state.getPrevLocation(mobileUnitID);
-            // (int16 prevZ,,,) = getTileCoords(mobileUnitTile);
+            // (int16 prevZ,,,) = getTileCoords(mobileUnitPrevTile);
             // if (prevZ == z && mobileUnitPrevTile != centerTile) {
             //     return;
             // }
@@ -421,7 +423,7 @@ contract TurfWarsZone is ZoneKind, IZone {
 
     
     // NOTE: Contract close to size limit. This can get dropped if we need more space. Below is ~500bytes
-    bytes24 constant BASE_BUILDING = 0xbe92755c00000000000000003e4de83a0000000000000004;
+    bytes24 constant BASE_BUILDING = 0xbe92755c0000000000000000a9c1e4010000000000000004;
     function onContructBuilding(Game ds, bytes24 zoneID, bytes24 /*mobileUnitID*/, bytes24 buildingInstance)
         external
         override

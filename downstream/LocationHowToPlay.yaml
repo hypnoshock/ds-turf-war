@@ -1,12 +1,11 @@
-
 ---
 kind: Tile
 spec:
   biome: DISCOVERED
-  location: [ -3, 6, -3 ]
+  location: [-3, 6, -3]
 
 ---
 kind: Building
 spec:
-  name: How To Play Turf Wars
+  name: How To Play Turf Wars Lite
   location: [-3, 6, -3]

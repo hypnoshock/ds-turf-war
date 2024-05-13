@@ -7,10 +7,8 @@ import {Dispatcher} from "cog/IDispatcher.sol";
 import {Schema, Node, CompoundKeyDecoder, BLOCK_TIME_SECS} from "@ds/schema/Schema.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {BuildingKind} from "@ds/ext/BuildingKind.sol";
-import {IWorld} from "./IWorld.sol";
 import {LibString} from "./LibString.sol";
 import {LibUtils} from "./LibUtils.sol";
-import {ITurfWars} from "./ITurfWars.sol";
 import {IZone, GAME_STATE, DATA_SELECTED_LEVEL, DATA_HAS_CLAIMED_PRIZES, TEAM_A, TEAM_B} from "./IZone.sol";
 import {IBase} from "./IBase.sol";
 

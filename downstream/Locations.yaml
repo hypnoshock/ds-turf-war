@@ -547,7 +547,7 @@ spec:
 ---
 kind: Building
 spec:
-  name: Turf Wars HQ
+  name: Turf Wars Lite HQ
   location: [0, 0, 0]
   facingDirection: RIGHT
 

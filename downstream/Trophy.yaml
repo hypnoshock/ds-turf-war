@@ -1,7 +1,7 @@
 ---
 kind: Item
 spec:
-  name: TW Trophy
+  name: TW Lite Trophy
   icon: 26-23
   contract:
     file: ./Trophy.sol

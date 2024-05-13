@@ -6,14 +6,6 @@ const BLOCK_TIME_SECS = 2;
 const TEAM_A = "teamA";
 const TEAM_B = "teamB";
 
-// set by the deployment script (not sure how find out which network we are on at runtime)
-// Setting the network on the zone directly was also difficult from the deploy script
-const NETWORK = "local";
-
-const SS_URL_LOCAL = "http://localhost:1337";
-const SS_URL_GARNET = "https://aa.skystrife.xyz";
-const SS_URL_REDSTONE = "https://play.skystrife.xyz";
-
 export default async function update(state, block) {
   //   const buildings = state.world?.buildings || [];
   const mobileUnit = getMobileUnit(state);
@@ -89,28 +81,14 @@ export default async function update(state, block) {
     );
   };
 
-  const getMatchURL = () => {
-    let skyStrifeUrl = SS_URL_LOCAL;
-    switch (NETWORK) {
-      case "local":
-        skyStrifeUrl = SS_URL_LOCAL;
-        break;
-      case "garnet":
-        skyStrifeUrl = SS_URL_GARNET;
-        break;
-      case "redstone":
-        skyStrifeUrl = SS_URL_REDSTONE;
-        break;
-    }
-
-    return `${skyStrifeUrl}/match?asPlayer=&useExternalWallet=&match=${matchID}`;
-  };
-
-  // console.log("matchUrl", getMatchURL());
+  const timeoutBlock = getDataInt(
+    selectedBuilding,
+    getTileMatchTimeoutBlockKey(selectedBuilding.location.tile.id)
+  );
 
   let html = ``;
   const buttons = [];
-  if (!matchID || matchID === nullBytes32) {
+  if (timeoutBlock === 0) {
     // if (playerTeam != tileTeam) {
     //   // Only the opposising team can start a battle
     // }
@@ -122,38 +100,20 @@ export default async function update(state, block) {
       disabled: false,
     });
   } else {
-    // NOTE: We have to always show the claim button even when the match hasn't been played
-    // as the match status isn't indexed on the DS graph
-    buttons.push({
-      text: "Claim Win",
-      type: "action",
-      action: claimWin,
-      disabled: false,
-    });
-  }
-
-  if (matchID && matchID !== nullBytes32) {
-    // html = `<a href="http://localhost:1337/match?asPlayer=&useExternalWallet=&match=${matchID}" target="_blank">Join Match</a>`;
-    html = `<a href="${getMatchURL()}" target="_blank">Join Match</a>`;
-
-    // Join battle button wasn't working properly so using <a> tag for now
-    // buttons.push({
-    //   text: "Join Battle",
-    //   type: "action",
-    //   action: joinBattle,
-    //   disabled: false,
-    // });
-
     // Show time until battle timesout
-    const timeoutBlock = getData(
-      selectedBuilding,
-      getTileMatchTimeoutBlockKey(selectedBuilding.location.tile.id)
-    );
-
     const remainingBlocks = timeoutBlock > block ? timeoutBlock - block : 0;
     const remainingTimeMs = remainingBlocks * BLOCK_TIME_SECS * 1000;
 
     html += `<p>Time remaining until attacker can claim win by default</p><h3>${formatTime(remainingTimeMs)}</h3>`;
+
+    if (remainingBlocks === 0) {
+      buttons.push({
+        text: "Claim Win",
+        type: "action",
+        action: claimWin,
+        disabled: false,
+      });
+    }
   }
 
   return {

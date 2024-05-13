@@ -107,7 +107,7 @@ export default async function update(state, block) {
 
   // Change appearance of bases if there is a match waiting on them
   mapObj.push(
-    ...getBuildingsByKind(state.world.buildings, "TW Base")
+    ...getBuildingsByKind(state.world.buildings, "TW Lite Base")
       .filter((b) => {
         const matchID = getData(b, getTileMatchKey(b.location.tile.id));
 

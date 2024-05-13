@@ -2,14 +2,14 @@
 kind: BuildingKind
 spec:
   category: custom
-  name: TW Base
+  name: TW Lite Base
   description: Puts a base on the map to conquer an area
   model: 01-08
   color: 5
   contract:
     file: ./Base.sol
   plugin:
-    file: ./Base-deploy.js
+    file: ./Base.js
   materials:
     - name: TW Hammer
       quantity: 1

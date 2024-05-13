@@ -138,7 +138,7 @@ export default async function update(state, block) {
       return;
     }
 
-    const baseBuildingIds = getBuildingsByType(buildings, "TW Base").map(
+    const baseBuildingIds = getBuildingsByType(buildings, "TW Lite Base").map(
       (b) => b.id
     );
 
@@ -167,7 +167,7 @@ export default async function update(state, block) {
   const resetGame = () => {
     console.log("Resetting game");
 
-    const baseBuildingIds = getBuildingsByType(buildings, "TW Base").map(
+    const baseBuildingIds = getBuildingsByType(buildings, "TW Lite Base").map(
       (b) => b.id
     );
 
