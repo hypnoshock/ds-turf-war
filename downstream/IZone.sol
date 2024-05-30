@@ -10,12 +10,18 @@ enum GAME_STATE {
     FINISHED
 }
 
+enum Team {
+    NONE,
+    A,
+    B
+}
+
 bytes24 constant HAMMER_ITEM = 0x6a7a67f09e2cd31d00000001000000140000001400000014;
 bytes24 constant PRIZE_ITEM = 0x6a7a67f0ca613996000000010000004b0000000100000001;
 string constant DATA_SELECTED_LEVEL = "selectedLevel";
 string constant DATA_HAS_CLAIMED_PRIZES = "hasClaimedPrizes";
-string constant TEAM_A = "teamA";
-string constant TEAM_B = "teamB";
+string constant TEAM_A = "team1";
+string constant TEAM_B = "team2";
 
 interface IZone {
     function setAreaWinner(Game ds, bytes24 origin, bytes24 player, bool overwrite) external;

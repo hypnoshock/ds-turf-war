@@ -8,7 +8,7 @@ import {Actions} from "@ds/actions/Actions.sol";
 import {BuildingKind} from "@ds/ext/BuildingKind.sol";
 import {LibString} from "./LibString.sol";
 import {LibUtils} from "./LibUtils.sol";
-import {IZone, GAME_STATE, DATA_SELECTED_LEVEL, TEAM_A, TEAM_B} from "./IZone.sol";
+import {IZone, GAME_STATE, DATA_SELECTED_LEVEL, Team} from "./IZone.sol";
 import {IBase} from "./IBase.sol";
 
 using Schema for State;
@@ -16,10 +16,15 @@ using Schema for State;
 contract Base is BuildingKind, IBase {
     uint256 constant BATTLE_TIMEOUT_BLOCKS = 60 / BLOCK_TIME_SECS;
 
-    function startBattle() external {}
+    function startBattle() external {} // TODO: remove this as starting battle is done by adding attackers
     function claimWin() external {}
+    
+    function addSoldiers(uint64 amount) external {}
+    function removeSoldiers(uint64 amount) external {}
 
     address public owner;
+
+    string constant DATA_BATTLE_START_BLOCK = "battleStartBlock";
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Base: Only owner can call this function");
@@ -35,9 +40,40 @@ contract Base is BuildingKind, IBase {
             _startBattle(ds, buildingInstance);
         } else if ((bytes4)(payload) == this.claimWin.selector) {
             _claimWin(ds, buildingInstance, actor);
+        } else if ((bytes4)(payload) == this.addSoldiers.selector) {
+            (uint64 amount) = abi.decode(payload[4:], (uint64));
+            _addSoldiers(ds, buildingInstance, actor, amount);
         } else {
             revert("Invalid function selector");
         }
+    }
+
+    function _addSoldiers(Game ds, bytes24 buildingInstance, bytes24 actor, uint64 amount) internal {
+        State state = ds.getState();
+        
+        bytes24 tile = state.getFixedLocation(buildingInstance);
+        bytes24 zone = Node.Zone(getTileZone(tile));
+        
+        Team team = LibUtils.getUnitTeam(state, zone, actor);
+
+        require(team != Team.NONE, "Base: Player is not in any team");
+        
+        uint64 soldierCount = uint64(uint256(state.getData(buildingInstance, LibUtils.getSoliderCountKey(team))));
+        
+        // Start attack this is the first lot of attackers
+        if (soldierCount == 0) {
+            _startBattle(ds, buildingInstance);
+        }
+
+        soldierCount += amount;
+        ds.getDispatcher().dispatch(
+            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, LibUtils.getSoliderCountKey(team), bytes32(uint256(soldierCount))))
+        );
+
+        // record our 'random' seed for this block
+        ds.getDispatcher().dispatch(
+            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, LibUtils.getRndSeedKey(block.number), blockhash(block.number - 1)))
+        );
     }
 
     // -- Hooks
@@ -57,20 +93,20 @@ contract Base is BuildingKind, IBase {
     }
 
     function _startBattle(Game ds, bytes24 buildingInstance) internal {
-        State state = ds.getState();
+        // State state = ds.getState();
 
-        bytes24 tile = state.getFixedLocation(buildingInstance);
-        (int16 z,,,) = LibUtils.getTileCoords(tile);
+        // bytes24 tile = state.getFixedLocation(buildingInstance);
+        // (int16 z,,,) = LibUtils.getTileCoords(tile);
 
-        bytes24 zoneID = Node.Zone(z);
+        // bytes24 zoneID = Node.Zone(z);
 
-        {
-            IZone zoneImpl = IZone(state.getImplementation(zoneID));
-            require(zoneImpl.getGameState(state, zoneID) == GAME_STATE.IN_PROGRESS, "Base: Cannot start battle when game has ended");
-        }
+        // {
+        //     IZone zoneImpl = IZone(state.getImplementation(zoneID));
+        //     require(zoneImpl.getGameState(state, zoneID) == GAME_STATE.IN_PROGRESS, "Base: Cannot start battle when game has ended");
+        // }
 
         ds.getDispatcher().dispatch(
-            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, LibUtils.getTileMatchTimeoutBlockKey(tile), bytes32(block.number + BATTLE_TIMEOUT_BLOCKS )))
+            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, DATA_BATTLE_START_BLOCK, bytes32(block.number)))
         );
     }
 

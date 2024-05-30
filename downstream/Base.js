@@ -3,8 +3,8 @@ import ds from "downstream";
 const nullBytes24 = `0x${"00".repeat(24)}`;
 const nullBytes32 = `0x${"00".repeat(32)}`;
 const BLOCK_TIME_SECS = 2;
-const TEAM_A = "teamA";
-const TEAM_B = "teamB";
+const TEAM_A = "team1";
+const TEAM_B = "team2";
 
 export default async function update(state, block) {
   //   const buildings = state.world?.buildings || [];
@@ -17,25 +17,38 @@ export default async function update(state, block) {
   // console.log(state);
   // const implementationAddr = selectedBuilding.kind.implementation.id.slice(-40);
   // console.log("implementationAddr", implementationAddr);
-  // console.log("selectedBuilding", selectedBuilding);
+  console.log("selectedBuilding", selectedBuilding);
   // const winner = getData(selectedBuilding, getTileWinnerKey(selectedBuilding));
   // console.log("matchID", matchID);
   // console.log("winner", winner);
 
+  // players are unit ids
   const { teamAPlayers, teamBPlayers } = getTurfWarsState(state, state.world);
 
   const tileWinnerKey = getTileWinnerKey(selectedBuilding.location.tile.id);
-  const winnerPlayerId = getDataBytes24(state.world, tileWinnerKey);
-  const playerTeam = getTeam(teamAPlayers, teamBPlayers, mobileUnit.owner.id);
-  const tileTeam = getTeam(teamAPlayers, teamBPlayers, winnerPlayerId);
-  const matchID = getData(
+  const winnerUnitId = getDataBytes24(state.world, tileWinnerKey);
+  const tileTeam = getTeam(teamAPlayers, teamBPlayers, winnerUnitId);
+  const playerTeam = getTeam(teamAPlayers, teamBPlayers, mobileUnit.id);
+
+  // The team that has claimed the tile will be on the defence
+  const defenders = getSoldierCount(selectedBuilding, tileTeam);
+
+  // Attackers are on the opposing team
+  const attackers = getSoldierCount(
     selectedBuilding,
-    getTileMatchKey(selectedBuilding.location.tile.id)
+    tileTeam == TEAM_A ? TEAM_B : TEAM_A
   );
-  // const matchWinner = getData(selectedBuilding, tileWinnerKey);
 
   const startBattle = () => {
     const payload = ds.encodeCall("function startBattle()", []);
+    ds.dispatch({
+      name: "BUILDING_USE",
+      args: [selectedBuilding.id, mobileUnit.id, payload],
+    });
+  };
+
+  const addSoldiers = (amount) => {
+    const payload = ds.encodeCall("function addSoldiers(uint64)", [amount]);
     ds.dispatch({
       name: "BUILDING_USE",
       args: [selectedBuilding.id, mobileUnit.id, payload],
@@ -86,35 +99,47 @@ export default async function update(state, block) {
     getTileMatchTimeoutBlockKey(selectedBuilding.location.tile.id)
   );
 
-  let html = ``;
+  let html = `
+    <p>defenders: ${defenders}</p>
+    <p>attackers: ${attackers}</p>
+  `;
   const buttons = [];
-  if (timeoutBlock === 0) {
-    // if (playerTeam != tileTeam) {
-    //   // Only the opposising team can start a battle
-    // }
+  // if (timeoutBlock === 0) {
+  //   // if (playerTeam != tileTeam) {
+  //   //   // Only the opposising team can start a battle
+  //   // }
 
-    buttons.push({
-      text: "Start Battle",
-      type: "action",
-      action: startBattle,
-      disabled: false,
-    });
-  } else {
-    // Show time until battle timesout
-    const remainingBlocks = timeoutBlock > block ? timeoutBlock - block : 0;
-    const remainingTimeMs = remainingBlocks * BLOCK_TIME_SECS * 1000;
+  //   buttons.push({
+  //     text: "Start Battle",
+  //     type: "action",
+  //     action: startBattle,
+  //     disabled: false,
+  //   });
+  // } else {
+  //   // Show time until battle timesout
+  //   const remainingBlocks = timeoutBlock > block ? timeoutBlock - block : 0;
+  //   const remainingTimeMs = remainingBlocks * BLOCK_TIME_SECS * 1000;
 
-    html += `<p>Time remaining until attacker can claim win by default</p><h3>${formatTime(remainingTimeMs)}</h3>`;
+  //   html += `<p>Time remaining until attacker can claim win by default</p><h3>${formatTime(remainingTimeMs)}</h3>`;
 
-    if (remainingBlocks === 0) {
-      buttons.push({
-        text: "Claim Win",
-        type: "action",
-        action: claimWin,
-        disabled: false,
-      });
-    }
-  }
+  //   if (remainingBlocks === 0) {
+  //     buttons.push({
+  //       text: "Claim Win",
+  //       type: "action",
+  //       action: claimWin,
+  //       disabled: false,
+  //     });
+  //   }
+  // }
+
+  buttons.push({
+    text: "Add 5 soldiers",
+    type: "action",
+    action: () => {
+      addSoldiers(5);
+    },
+    disabled: false,
+  });
 
   return {
     version: 1,
@@ -144,33 +169,19 @@ function getTurfWarsState(state, zone) {
   const gameState = getDataInt(zone, "gameState");
   const startBlock = getDataInt(zone, "startBlock");
   const endBlock = getDataInt(zone, "endBlock");
-  const teamALength = getDataInt(zone, "teamALength");
-  const teamBLength = getDataInt(zone, "teamBLength");
+  const teamALength = getDataInt(zone, TEAM_A + "Length");
+  const teamBLength = getDataInt(zone, TEAM_B + "Length");
 
   const teamAPlayers = [];
   for (let i = 0; i < teamALength; i++) {
-    const unitId = getTeamUnitAtIndex(zone, "teamA", i);
-    const mobileUnit = state.world?.mobileUnits?.find(
-      (unit) => unit.id === unitId
-    );
-    if (mobileUnit) {
-      teamAPlayers.push(mobileUnit.owner.id);
-    } else {
-      console.warn("Mobile unit not found for team A player", unitId);
-    }
+    const unitId = getTeamUnitAtIndex(zone, TEAM_A, i);
+    teamAPlayers.push(unitId);
   }
 
   const teamBPlayers = [];
   for (let i = 0; i < teamBLength; i++) {
-    const unitId = getTeamUnitAtIndex(zone, "teamB", i);
-    const mobileUnit = state.world?.mobileUnits?.find(
-      (unit) => unit.id === unitId
-    );
-    if (mobileUnit) {
-      teamBPlayers.push(mobileUnit.owner.id);
-    } else {
-      console.warn("Mobile unit not found for team B player", unitId);
-    }
+    const unitId = getTeamUnitAtIndex(zone, TEAM_B, i);
+    teamBPlayers.push(unitId);
   }
 
   return {
@@ -197,6 +208,10 @@ function getTeam(teamAPlayers, teamBPlayers, playerId) {
   } else {
     return "";
   }
+}
+
+function getSoldierCount(building, teamKey) {
+  return getDataInt(building, getSoldierCountKey(teamKey));
 }
 
 // ---- helper functions ----
@@ -288,6 +303,11 @@ function getCompatibleOrEmptySlot(mobileUnit, itemName, quantity = 1) {
 }
 
 // -- Match Data
+
+function getSoldierCountKey(teamKey) {
+  console.log("soldierCountKey", teamKey + "_soldierCount");
+  return teamKey + "_soldierCount";
+}
 
 function getTileMatchKey(tileId) {
   return tileId + "_entityID";

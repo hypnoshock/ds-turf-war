@@ -8,7 +8,7 @@ import {Schema, CombatWinState, Node, Q, R, S, BLOCK_TIME_SECS} from "@ds/schema
 import {ZoneKind} from "@ds/ext/ZoneKind.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {LibUtils} from "./LibUtils.sol";
-import {IZone, GAME_STATE, HAMMER_ITEM, PRIZE_ITEM, TEAM_A, TEAM_B, DATA_HAS_CLAIMED_PRIZES} from "./IZone.sol";
+import {IZone, GAME_STATE, HAMMER_ITEM, PRIZE_ITEM, Team, TEAM_A, TEAM_B, DATA_HAS_CLAIMED_PRIZES} from "./IZone.sol";
 import "@ds/utils/LibString.sol";
 
 using Schema for State;
@@ -21,14 +21,8 @@ contract TurfWarsZone is ZoneKind, IZone {
     function destroyTileBag(bytes24 tileID, bytes24 bagID, bytes24[] memory slotContents) external {}
     // function claim() external {}
 
-    enum Team {
-        NONE,
-        A,
-        B
-    }
-
     int16 constant DEFAULT_CLAIM_RANGE = 2;
-    uint64 constant DEFAULT_GAME_DURATION_BLOCKS = 15 * 60 / BLOCK_TIME_SECS; // (15 * 60) 
+    uint64 constant DEFAULT_GAME_DURATION_BLOCKS = 120 * 60 / BLOCK_TIME_SECS; // (15 * 60) 
     uint64 constant DEFAULT_HAMMER_COUNT = 2;
 
     // Data keys
@@ -121,7 +115,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         // }
 
         // Get unit team
-        Team team = _getUnitTeam(state, zoneID, mobileUnitID);
+        Team team = LibUtils.getUnitTeam(state, zoneID, mobileUnitID);
         if (team == Team.NONE) {
             revert("Unit not in team");
         }
@@ -163,7 +157,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         // }
 
         // Get unit team
-        Team team = _getUnitTeam(state, zoneID, mobileUnitID);
+        Team team = LibUtils.getUnitTeam(state, zoneID, mobileUnitID);
         if (team == Team.NONE) {
             revert("Unit not in team");
         }
@@ -185,8 +179,8 @@ contract TurfWarsZone is ZoneKind, IZone {
             revert("Already joined");
         }
 
-        uint64 teamALength = uint64(uint256(state.getData(zoneID, "teamALength")));
-        uint64 teamBLength = uint64(uint256(state.getData(zoneID, "teamBLength")));
+        uint64 teamALength = uint64(uint256(state.getData(zoneID, string(abi.encodePacked(TEAM_A, "Length")))));
+        uint64 teamBLength = uint64(uint256(state.getData(zoneID, string(abi.encodePacked(TEAM_B, "Length")))));
 
         // assign a team
         _assignUnitToTeam(
@@ -276,17 +270,6 @@ contract TurfWarsZone is ZoneKind, IZone {
         _setDataOnZone(
             dispatcher, zoneID, string(abi.encodePacked(teamPrefix, "Length")), bytes32(uint256(teamLength) + 1)
         );
-    }
-
-
-
-    function _getUnitTeam(State state, bytes24 zoneID, bytes24 unitId) private view returns (Team) {
-        if (LibUtils.isUnitInTeam(state, zoneID, TEAM_A, unitId)) {
-            return Team.A;
-        } else if (LibUtils.isUnitInTeam(state, zoneID, TEAM_B, unitId)) {
-            return Team.B;
-        }
-        return Team.NONE;
     }
 
     function getTileCoords(bytes24 tile) internal pure returns (int16 z, int16 q, int16 r, int16 s) {

@@ -3,14 +3,31 @@ pragma solidity ^0.8.13;
 
 import {State, CompoundKeyDecoder} from "cog/IState.sol";
 import {LibString} from "./LibString.sol";
+import {Team, TEAM_A, TEAM_B} from "./IZone.sol";
 
 library LibUtils {
+    function getTeamKey(Team team) internal pure returns (string memory) {
+        return string(abi.encodePacked("team", LibString.toString(uint256(team))));
+    }
+
     function getTileMatchKey(bytes24 tile) internal pure returns (string memory) {
         return string(abi.encodePacked(LibString.toHexString(uint192(bytes24(tile)), 24), "_entityID"));
     }
 
     function getTileWinnerKey(bytes24 tile) internal pure returns (string memory) {
         return string(abi.encodePacked(LibString.toHexString(uint192(bytes24(tile)), 24), "_winner"));
+    }
+
+    function getStateUpdateKey(bytes24 tile) internal pure returns (string memory) {
+        return string(abi.encodePacked(LibString.toHexString(uint192(bytes24(tile)), 24), "_stateUpdate"));
+    }
+
+    function getSoliderCountKey(Team team) internal pure returns (string memory) {
+        return string(abi.encodePacked(getTeamKey(team), "_soldierCount"));
+    }
+
+    function getRndSeedKey(uint256 blockNumber) internal pure returns (string memory) {
+        return string(abi.encodePacked("rndSeed_", LibString.toHexString(uint64(blockNumber), 8)));
     }
 
     function getTileMatchTimeoutBlockKey(bytes24 tile) internal pure returns (string memory) {
@@ -36,5 +53,14 @@ library LibUtils {
             }
         }
         return false;
+    }
+
+    function getUnitTeam(State state, bytes24 zoneID, bytes24 unitId) internal view returns (Team) {
+        if (LibUtils.isUnitInTeam(state, zoneID, TEAM_A, unitId)) {
+            return Team.A;
+        } else if (LibUtils.isUnitInTeam(state, zoneID, TEAM_B, unitId)) {
+            return Team.B;
+        }
+        return Team.NONE;
     }
 }

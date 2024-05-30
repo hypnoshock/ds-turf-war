@@ -1,0 +1,3 @@
+- Maybe hammers and soliders are not items but instead are tracked for each player using session data stored on the zone.
+  - This solves the problem of soldiers and hammers being carried over from previous sessions
+  - Maybe at the end of the game you can export some of the soldiers out and a certain number can be imported in at the start

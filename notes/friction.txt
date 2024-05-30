@@ -1,0 +1,17 @@
+## Structure
+
+- Writing plugins as a giant .js file is very unwieldy and doesn't allow for importing of other files
+
+## UI
+
+- Very difficult to simply create a form on UI for input. I want to have a field for inputting the number of soldiers to commit to a building
+- There is no UI feedback
+
+## Data handling
+
+- It's possible to store data in a mapping using SET_DATA_ON_BUILDING etc but there isn't an easy way of clearing this mapping
+  - I wanted to have a mapping of players to teams but I want that cleared when the game is reset. I can't do this without storing all the keys
+
+## Possible fixes
+
+- A skeleton project in TypeScript that will create separate bundle .js files for each building as 

@@ -1,0 +1,9 @@
+kind: Item
+spec:
+  name: TW Soldier
+  icon: 28-62
+  goo:
+    red: 40
+    green: 10
+    blue: 10
+  stackable: true

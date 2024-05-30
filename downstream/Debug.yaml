@@ -1,0 +1,10 @@
+---
+kind: Bag
+spec:
+  location:
+    - 1
+    - -1
+    - 0
+  items:
+    - name: "TW Soldier"
+      quantity: 100

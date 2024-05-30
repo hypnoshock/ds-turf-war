@@ -1,5 +1,7 @@
 import ds from "downstream";
 
+const TEAM_A = "team1";
+const TEAM_B = "team2";
 const BLOCK_TIME_SECS = 2;
 const GAME_STATE_NOT_STARTED = 0;
 const GAME_STATE_IN_PROGRESS = 1;
@@ -111,6 +113,8 @@ export default async function update(state, block) {
 // ---- turf wars helper functions ----
 
 // Copied from Zone.js
+// ------------------------------------------------------- Turf Wars state
+
 function getTurfWarsState(state, block, zone) {
   if (!zone) {
     throw new Error("Zone not found");
@@ -118,8 +122,8 @@ function getTurfWarsState(state, block, zone) {
   const prizePool = getDataInt(zone, "prizePool");
   const startBlock = getDataInt(zone, "startBlock");
   const endBlock = getDataInt(zone, "endBlock");
-  const teamALength = getDataInt(zone, "teamALength");
-  const teamBLength = getDataInt(zone, "teamBLength");
+  const teamALength = getDataInt(zone, TEAM_A + "Length");
+  const teamBLength = getDataInt(zone, TEAM_B + "Length");
 
   // Remaining time
   const nowBlock = block;
@@ -133,13 +137,13 @@ function getTurfWarsState(state, block, zone) {
 
   const teamAPlayers = [];
   for (let i = 0; i < teamALength; i++) {
-    const unitId = getTeamUnitAtIndex(zone, "teamA", i);
+    const unitId = getTeamUnitAtIndex(zone, TEAM_A, i);
     teamAPlayers.push(unitId);
   }
 
   const teamBPlayers = [];
   for (let i = 0; i < teamBLength; i++) {
-    const unitId = getTeamUnitAtIndex(zone, "teamB", i);
+    const unitId = getTeamUnitAtIndex(zone, TEAM_B, i);
     teamBPlayers.push(unitId);
   }
 
@@ -183,6 +187,7 @@ function getTurfWarsState(state, block, zone) {
     teamAPlayers,
     teamBPlayers,
     remainingTimeMs,
+    dirtyTiles,
   };
 }
 
