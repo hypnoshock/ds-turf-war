@@ -95,6 +95,7 @@ contract Base is BuildingKind, IBase {
         State state = ds.getState();
 
         teamStates = new TeamState[](2);
+
         uint256 startBlock = uint256(state.getData(buildingInstance, DATA_BATTLE_START_BLOCK));
         if (startBlock == 0) {
             return (teamStates, false);
@@ -115,7 +116,7 @@ contract Base is BuildingKind, IBase {
             bytes32 stateUpdate = state.getData(buildingInstance, LibUtils.getStateChangeKey(startBlock + i));
             if (stateUpdate != bytes32(0)) {
                 (Team team, uint8 soldierAmount) = _decodeStateUpdate(stateUpdate);
-                teamStates[uint8(team)].soldierCount += soldierAmount;
+                teamStates[uint8(team) - 1].soldierCount += soldierAmount;
                 rndSeed = state.getData(buildingInstance, LibUtils.getRndSeedKey(startBlock + i));
             }
 

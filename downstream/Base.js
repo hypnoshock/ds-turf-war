@@ -5,8 +5,37 @@ const nullBytes32 = `0x${"00".repeat(32)}`;
 const BLOCK_TIME_SECS = 2;
 const TEAM_A = "team1";
 const TEAM_B = "team2";
+const func = ds;
+const networkEndpoint = ds.config.networkEndpoint;
+const gameContractAddr = getGameContractAddr(ds.config.networkName);
+
+let battleState = {
+  teamState: [],
+  isFinished: false,
+};
+
+function getGameContractAddr(networkName) {
+  switch (networkName) {
+    case "hexwoodlocal":
+      return "0xF8311e28c658003929A7c1218fb8E44cE7A814DE";
+    case "redstone":
+      return "0x0";
+    default:
+      throw "Turf Wars: Unknown network: " + networkName;
+  }
+}
+
+let lastBlock = 0;
+let isNewBlock = false;
 
 export default async function update(state, block) {
+  if (block !== lastBlock) {
+    lastBlock = block;
+    isNewBlock = true;
+  } else {
+    isNewBlock = false;
+  }
+
   //   const buildings = state.world?.buildings || [];
   const mobileUnit = getMobileUnit(state);
   const selectedTile = getSelectedTile(state);
@@ -14,13 +43,20 @@ export default async function update(state, block) {
     selectedTile && getBuildingOnTile(state, selectedTile);
 
   // DEBUG
-  console.log(state);
-  const implementationAddr = selectedBuilding.kind.implementation.id.slice(-40);
-  console.log("implementationAddr", implementationAddr);
-  console.log("selectedBuilding", selectedBuilding);
+  // console.log("ds", ds);
+  const implementationAddr =
+    "0x" + selectedBuilding.kind.implementation.id.slice(-40);
+  // console.log("implementationAddr", implementationAddr);
+  // console.log("selectedBuilding", selectedBuilding);
   // const winner = getData(selectedBuilding, getTileWinnerKey(selectedBuilding));
   // console.log("matchID", matchID);
   // console.log("winner", winner);
+
+  //--  Fetch the latest state
+
+  if (isNewBlock) {
+    fetchBattleState(implementationAddr, selectedBuilding.id, block);
+  }
 
   // players are unit ids
   const { teamAPlayers, teamBPlayers } = getTurfWarsState(state, state.world);
@@ -31,11 +67,11 @@ export default async function update(state, block) {
   const playerTeam = getTeam(teamAPlayers, teamBPlayers, mobileUnit.id);
 
   // The team that has claimed the tile will be on the defence
-  const defenders = getSoldierCount(selectedBuilding, tileTeam);
+  const defenders = getSoldierCount(battleState, tileTeam);
 
   // Attackers are on the opposing team
   const attackers = getSoldierCount(
-    selectedBuilding,
+    battleState,
     tileTeam == TEAM_A ? TEAM_B : TEAM_A
   );
 
@@ -102,6 +138,7 @@ export default async function update(state, block) {
   let html = `
     <p>defenders: ${defenders}</p>
     <p>attackers: ${attackers}</p>
+    <p>battle finished: ${battleState.isFinished}</p>
   `;
   const buttons = [];
   // if (timeoutBlock === 0) {
@@ -160,6 +197,61 @@ export default async function update(state, block) {
   };
 }
 
+// ---- State fetching
+
+function fetchBattleState(buildingImplementationAddr, buildingId, block) {
+  fetch(networkEndpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "eth_call",
+      params: [
+        {
+          to: buildingImplementationAddr,
+          data: ds.encodeCall(
+            "function getBattleState(address,bytes24,uint256)",
+            [gameContractAddr, buildingId, block]
+          ),
+        },
+        "latest",
+      ],
+      id: 1,
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.error) {
+        console.error("Unable to retrieve battle state", data.error);
+        return;
+      }
+
+      if (!data.result) {
+        console.error("No result from battle state call");
+        console.log("data: ", data);
+        console.log("endpoint: ", networkEndpoint);
+        return;
+      }
+
+      const [teamStates, isFinished] = ds.abiDecode(
+        ["(uint8,uint8)[]", "bool"],
+        data.result
+      );
+
+      battleState = {
+        teamState: teamStates.map((teamState, idx) => {
+          const [_teamId, soldierCount] = teamState;
+          // TODO: Currently using idx to determine team key, this is not safe when we have more than 2 players
+          const teamKey = idx === 0 ? TEAM_A : TEAM_B;
+          return { teamKey, soldierCount };
+        }),
+        isFinished,
+      };
+    });
+}
+
 // ---- turf wars helper functions ----
 
 function getTurfWarsState(state, zone) {
@@ -210,8 +302,12 @@ function getTeam(teamAPlayers, teamBPlayers, playerId) {
   }
 }
 
-function getSoldierCount(building, teamKey) {
-  return getDataInt(building, getSoldierCountKey(teamKey));
+function getSoldierCount(battleState, teamKey) {
+  const teamState = battleState.teamState.find((t) => t.teamKey === teamKey);
+  if (!teamState) {
+    return 0;
+  }
+  return teamState.soldierCount;
 }
 
 // ---- helper functions ----
