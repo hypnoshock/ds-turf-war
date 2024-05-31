@@ -17,6 +17,7 @@ contract Base is BuildingKind, IBase {
     uint256 constant BATTLE_TIMEOUT_BLOCKS = 300; //60 / BLOCK_TIME_SECS;
 
     function startBattle() external {}
+    function continueBattle() external {}
     function claimWin() external {}
 
     function addSoldiers(uint8 amount) external {}
@@ -51,6 +52,8 @@ contract Base is BuildingKind, IBase {
         } else if ((bytes4)(payload) == this.addSoldiers.selector) {
             (uint8 amount) = abi.decode(payload[4:], (uint8));
             _addSoldiers(ds, buildingInstance, actor, amount);
+        } else if ((bytes4)(payload) == this.continueBattle.selector) {
+            _continueBattle(ds, buildingInstance);
         } else {
             revert("Invalid function selector");
         }
@@ -166,34 +169,48 @@ contract Base is BuildingKind, IBase {
 
         // TODO: Find the team that is on defence so we know who attacks first
 
-        bytes32 rndSeed;
+        uint256 rndSeed = uint256(state.getData(buildingInstance, LibUtils.getRndSeedKey(startBlock)));
         for (uint256 i = 0; i < totalBlocks; i++) {
             bytes32 stateUpdate = state.getData(buildingInstance, LibUtils.getStateChangeKey(startBlock + i));
             if (stateUpdate != bytes32(0)) {
                 (Team team, uint8 soldierAmount) = _decodeStateUpdate(stateUpdate);
                 teamStates[uint8(team) - 1].soldierCount += soldierAmount;
-                rndSeed = state.getData(buildingInstance, LibUtils.getRndSeedKey(startBlock + i));
+                rndSeed = uint256(state.getData(buildingInstance, LibUtils.getRndSeedKey(startBlock + i)));
             }
+
+            rndSeed = uint256(keccak256(abi.encodePacked(rndSeed, i)));
 
             if (teamStates[uint8(Team.A) - 1].soldierCount == 0 || teamStates[uint8(Team.B) - 1].soldierCount == 0) {
-                return (teamStates, true);
+                return (teamStates, i > 0);
             }
 
-            // Attackers attack first
-            for (uint8 j = 0; j < teamStates[uint8(Team.A) - 1].soldierCount; j++) {
+            if (rndSeed & 0xff > 127) {
                 teamStates[uint8(Team.B) - 1].soldierCount--;
                 if (teamStates[uint8(Team.B) - 1].soldierCount == 0) {
                     return (teamStates, true);
                 }
-            }
-
-            // Defenders attack second
-            for (uint8 j = 0; j < teamStates[uint8(Team.B) - 1].soldierCount; j++) {
+            } else {
                 teamStates[uint8(Team.A) - 1].soldierCount--;
                 if (teamStates[uint8(Team.A) - 1].soldierCount == 0) {
                     return (teamStates, true);
                 }
             }
+
+            // // Attackers attack first
+            // for (uint8 j = 0; j < teamStates[uint8(Team.A) - 1].soldierCount; j++) {
+            //     teamStates[uint8(Team.B) - 1].soldierCount--;
+            //     if (teamStates[uint8(Team.B) - 1].soldierCount == 0) {
+            //         return (teamStates, true);
+            //     }
+            // }
+
+            // // Defenders attack second
+            // for (uint8 j = 0; j < teamStates[uint8(Team.B) - 1].soldierCount; j++) {
+            //     teamStates[uint8(Team.A) - 1].soldierCount--;
+            //     if (teamStates[uint8(Team.A) - 1].soldierCount == 0) {
+            //         return (teamStates, true);
+            //     }
+            // }
         }
 
         return (teamStates, isFinished);
@@ -201,12 +218,23 @@ contract Base is BuildingKind, IBase {
 
     // -- Hooks
 
-    function construct(Game ds, bytes24, /*buildingInstanceID*/ bytes24 mobileUnitID, bytes memory payload)
+    function construct(Game ds, bytes24 /*buildingKind*/, bytes24 mobileUnitID, bytes memory coordsEncoded)
         public
         override
     {
         State state = ds.getState();
-        int16[4] memory coords = abi.decode(payload, (int16[4]));
+      
+        // NOTE: Cannot set data in construct hook because it's fired off before owner set
+        // bytes24 buildingInstance = Node.Building(coords[0], coords[1], coords[2], coords[3]);
+        // Clear any existing data (couldn't do this in zone in reset because contract to large)
+        // ds.getDispatcher().dispatch(
+        //     abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, DATA_INIT_STATE, bytes32(0)))
+        // );
+        // ds.getDispatcher().dispatch(
+        //     abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, DATA_BATTLE_START_BLOCK, bytes32(0)))
+        // );
+
+        int16[4] memory coords = abi.decode(coordsEncoded, (int16[4]));
         bytes24 zone = Node.Zone(coords[0]);
         IZone zoneImpl = IZone(state.getImplementation(zone));
         require(address(zoneImpl) != address(0), "Base::construct - No implementation for zone");
@@ -247,24 +275,65 @@ contract Base is BuildingKind, IBase {
         );
     }
 
+    function _continueBattle(Game ds, bytes24 buildingInstance) internal {
+        State state = ds.getState();
+
+        require(
+            state.getData(buildingInstance, DATA_BATTLE_START_BLOCK) != bytes32(0), "Base: Battle not started"
+        );
+
+        (TeamState[] memory teamStates, bool isFinished) = getBattleState(ds, buildingInstance, block.number);
+
+        require(isFinished, "Base: Battle still in play");
+
+        require(teamStates[0].soldierCount > 0 && teamStates[1].soldierCount > 0, "Base: cannot continue a finished battle");
+
+        ds.getDispatcher().dispatch(
+            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, DATA_INIT_STATE, _encodeInitState(teamStates)))
+        );
+
+        ds.getDispatcher().dispatch(
+            abi.encodeCall(
+                Actions.SET_DATA_ON_BUILDING, (buildingInstance, DATA_BATTLE_START_BLOCK, bytes32(block.number))
+            )
+        );
+
+        // record our 'random' seed for this block
+        ds.getDispatcher().dispatch(
+            abi.encodeCall(
+                Actions.SET_DATA_ON_BUILDING,
+                (buildingInstance, LibUtils.getRndSeedKey(block.number), blockhash(block.number - 1))
+            )
+        );
+    }
+
     function _claimWin(Game ds, bytes24 buildingInstance, bytes24 actor) internal {
         State state = ds.getState();
 
         bytes24 tile = state.getFixedLocation(buildingInstance);
 
-        uint256 timeoutBlock = uint256(state.getData(buildingInstance, LibUtils.getTileMatchTimeoutBlockKey(tile)));
-        require(timeoutBlock != 0, "Match has not started yet");
-        require(timeoutBlock < block.number, "Match has not timed out, cannot claim win yet");
+        (TeamState[] memory teamStates, bool isFinished) = getBattleState(ds, buildingInstance, block.number);
+
+        require(isFinished, "Battle not finished yet");
 
         ds.getDispatcher().dispatch(
             abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, DATA_BATTLE_START_BLOCK, bytes32(0)))
         );
 
+        require(teamStates[0].soldierCount == 0 || teamStates[1].soldierCount == 0, "Base: Battle is not finished");
+
+        // NOTE: Remember to enode state if we decide not to destroy buildings on win
         ds.getDispatcher().dispatch(
             abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, DATA_INIT_STATE, bytes32(0)))
         );
 
+        Team winningTeam = teamStates[0].soldierCount == 0 ? Team.B : Team.A;
+
         bytes24 zone = Node.Zone(getTileZone(tile));
+        Team team = LibUtils.getUnitTeam(state, zone, actor);
+
+        require(team == winningTeam, "Base: Player is not in the winning team");
+
         IZone zoneImpl = IZone(state.getImplementation(zone));
         zoneImpl.setAreaWinner(ds, tile, actor, true);
     }

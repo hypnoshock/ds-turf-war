@@ -315,7 +315,10 @@ contract TurfWarsZone is ZoneKind, IZone {
             require(Node.Zone(z) == zoneID, "Base building not in zone");
             dispatcher.dispatch(abi.encodeCall(Actions.DEV_DESTROY_BUILDING, (z, q, r, s)));
 
-            // TODO: if timeoutblock set then set to zero
+            // TODO: Contract too large
+            // ds.getDispatcher().dispatch(
+            //     abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (baseBuildings[i], "initState", bytes32(0)))
+            // );
         }
 
         _setDataOnZone(dispatcher, zoneID, DATA_GAME_STATE, bytes32(uint256(GAME_STATE.NOT_STARTED)));

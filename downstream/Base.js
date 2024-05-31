@@ -89,6 +89,14 @@ export default async function update(state, block) {
     });
   };
 
+  const continueBattle = () => {
+    const payload = ds.encodeCall("function continueBattle()", []);
+    ds.dispatch({
+      name: "BUILDING_USE",
+      args: [selectedBuilding.id, mobileUnit.id, payload],
+    });
+  };
+
   const addSoldiers = (amount) => {
     const payload = ds.encodeCall("function addSoldiers(uint8)", [amount]);
     ds.dispatch({
@@ -160,15 +168,23 @@ export default async function update(state, block) {
     // html += `<p>Time remaining until attacker can claim win by default</p><h3>${formatTime(remainingTimeMs)}</h3>`;
   }
 
-  //   if (remainingBlocks === 0) {
-  //     buttons.push({
-  //       text: "Claim Win",
-  //       type: "action",
-  //       action: claimWin,
-  //       disabled: false,
-  //     });
-  //   }
-  // }
+  if (battleState.isFinished) {
+    if (defenders == 0 || attackers == 0) {
+      buttons.push({
+        text: "Claim Win",
+        type: "action",
+        action: claimWin,
+        disabled: false,
+      });
+    } else {
+      buttons.push({
+        text: "Continue Battle",
+        type: "action",
+        action: continueBattle,
+        disabled: false,
+      });
+    }
+  }
 
   buttons.push({
     text: "Add 1 soldier",
