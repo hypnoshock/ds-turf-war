@@ -5,6 +5,7 @@ const nullBytes32 = `0x${"00".repeat(32)}`;
 const BLOCK_TIME_SECS = 2;
 const TEAM_A = "team1";
 const TEAM_B = "team2";
+const DATA_BATTLE_START_BLOCK = "battleStartBlock";
 const func = ds;
 const networkEndpoint = ds.config.networkEndpoint;
 const gameContractAddr = getGameContractAddr(ds.config.networkName);
@@ -42,10 +43,15 @@ export default async function update(state, block) {
   const selectedBuilding =
     selectedTile && getBuildingOnTile(state, selectedTile);
 
+  if (!selectedBuilding || !mobileUnit) {
+    return {
+      version: 1,
+      components: [],
+    };
+  }
+
   // DEBUG
   // console.log("ds", ds);
-  const implementationAddr =
-    "0x" + selectedBuilding.kind.implementation.id.slice(-40);
   // console.log("implementationAddr", implementationAddr);
   // console.log("selectedBuilding", selectedBuilding);
   // const winner = getData(selectedBuilding, getTileWinnerKey(selectedBuilding));
@@ -55,7 +61,7 @@ export default async function update(state, block) {
   //--  Fetch the latest state
 
   if (isNewBlock) {
-    fetchBattleState(implementationAddr, selectedBuilding.id, block);
+    fetchBattleState(selectedBuilding, block);
   }
 
   // players are unit ids
@@ -130,9 +136,9 @@ export default async function update(state, block) {
     );
   };
 
-  const timeoutBlock = getDataInt(
+  const battleStartBlock = getDataInt(
     selectedBuilding,
-    getTileMatchTimeoutBlockKey(selectedBuilding.location.tile.id)
+    DATA_BATTLE_START_BLOCK
   );
 
   let html = `
@@ -141,23 +147,18 @@ export default async function update(state, block) {
     <p>battle finished: ${battleState.isFinished}</p>
   `;
   const buttons = [];
-  // if (timeoutBlock === 0) {
-  //   // if (playerTeam != tileTeam) {
-  //   //   // Only the opposising team can start a battle
-  //   // }
 
-  //   buttons.push({
-  //     text: "Start Battle",
-  //     type: "action",
-  //     action: startBattle,
-  //     disabled: false,
-  //   });
-  // } else {
-  //   // Show time until battle timesout
-  //   const remainingBlocks = timeoutBlock > block ? timeoutBlock - block : 0;
-  //   const remainingTimeMs = remainingBlocks * BLOCK_TIME_SECS * 1000;
-
-  //   html += `<p>Time remaining until attacker can claim win by default</p><h3>${formatTime(remainingTimeMs)}</h3>`;
+  if (battleStartBlock === 0) {
+    buttons.push({
+      text: "Start Battle",
+      type: "action",
+      action: startBattle,
+      disabled: false,
+    });
+  } else {
+    html += `<p>Battle started at block: ${battleStartBlock}</p>`;
+    // html += `<p>Time remaining until attacker can claim win by default</p><h3>${formatTime(remainingTimeMs)}</h3>`;
+  }
 
   //   if (remainingBlocks === 0) {
   //     buttons.push({
@@ -168,6 +169,15 @@ export default async function update(state, block) {
   //     });
   //   }
   // }
+
+  buttons.push({
+    text: "Add 1 soldier",
+    type: "action",
+    action: () => {
+      addSoldiers(1);
+    },
+    disabled: false,
+  });
 
   buttons.push({
     text: "Add 5 soldiers",
@@ -199,7 +209,15 @@ export default async function update(state, block) {
 
 // ---- State fetching
 
-function fetchBattleState(buildingImplementationAddr, buildingId, block) {
+function fetchBattleState(building, block) {
+  const buildingId = building.id;
+  const buildingImplementationAddr =
+    "0x" + building.kind.implementation.id.slice(-40);
+
+  // Battle hasn't started, get initial state from DATA_INIT_STATE
+
+  // else fetch the full state from the contract
+
   fetch(networkEndpoint, {
     method: "POST",
     headers: {
