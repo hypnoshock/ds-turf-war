@@ -22,12 +22,12 @@ library LibUtils {
         return string(abi.encodePacked(LibString.toHexString(uint192(bytes24(tile)), 24), "_stateUpdate"));
     }
 
-    function getSoliderCountKey(Team team) internal pure returns (string memory) {
-        return string(abi.encodePacked(getTeamKey(team), "_soldierCount"));
-    }
-
     function getRndSeedKey(uint256 blockNumber) internal pure returns (string memory) {
         return string(abi.encodePacked("rndSeed_", LibString.toHexString(uint64(blockNumber), 8)));
+    }
+
+    function getStateChangeKey(uint256 blockNumber) internal pure returns (string memory) {
+        return string(abi.encodePacked("stateChange_", LibString.toHexString(uint64(blockNumber), 8)));
     }
 
     function getTileMatchTimeoutBlockKey(bytes24 tile) internal pure returns (string memory) {

@@ -14,9 +14,9 @@ export default async function update(state, block) {
     selectedTile && getBuildingOnTile(state, selectedTile);
 
   // DEBUG
-  // console.log(state);
-  // const implementationAddr = selectedBuilding.kind.implementation.id.slice(-40);
-  // console.log("implementationAddr", implementationAddr);
+  console.log(state);
+  const implementationAddr = selectedBuilding.kind.implementation.id.slice(-40);
+  console.log("implementationAddr", implementationAddr);
   console.log("selectedBuilding", selectedBuilding);
   // const winner = getData(selectedBuilding, getTileWinnerKey(selectedBuilding));
   // console.log("matchID", matchID);
@@ -48,7 +48,7 @@ export default async function update(state, block) {
   };
 
   const addSoldiers = (amount) => {
-    const payload = ds.encodeCall("function addSoldiers(uint64)", [amount]);
+    const payload = ds.encodeCall("function addSoldiers(uint8)", [amount]);
     ds.dispatch({
       name: "BUILDING_USE",
       args: [selectedBuilding.id, mobileUnit.id, payload],
@@ -305,7 +305,6 @@ function getCompatibleOrEmptySlot(mobileUnit, itemName, quantity = 1) {
 // -- Match Data
 
 function getSoldierCountKey(teamKey) {
-  console.log("soldierCountKey", teamKey + "_soldierCount");
   return teamKey + "_soldierCount";
 }
 
