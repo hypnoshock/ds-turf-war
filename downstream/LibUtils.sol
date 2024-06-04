@@ -63,4 +63,9 @@ library LibUtils {
         }
         return Team.NONE;
     }
+
+    function getTileZone(bytes24 tile) internal pure returns (int16 z) {
+        int16[4] memory keys = CompoundKeyDecoder.INT16_ARRAY(tile);
+        return (keys[0]);
+    }
 }
