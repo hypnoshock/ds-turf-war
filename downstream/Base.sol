@@ -15,8 +15,6 @@ import {LibCombat, TeamState, DATA_INIT_STATE, NUM_WEAPON_KINDS, NUM_DEFENCE_LEV
 using Schema for State;
 
 contract Base is BuildingKind, IBase {
-    
-
     function startBattle() external {}
     function continueBattle() external {}
     function claimWin() external {}
@@ -37,14 +35,12 @@ contract Base is BuildingKind, IBase {
 
     function use(Game ds, bytes24 buildingInstance, bytes24 actor, bytes calldata payload) public override {
         if ((bytes4)(payload) == this.startBattle.selector) {
-            LibCombat.startBattle(ds, buildingInstance);
+            _startBattle(ds, buildingInstance);
         } else if ((bytes4)(payload) == this.claimWin.selector) {
             _claimWin(ds, buildingInstance, actor);
         } else if ((bytes4)(payload) == this.addSoldiers.selector) {
             (uint8 amount) = abi.decode(payload[4:], (uint8));
-            uint8[NUM_WEAPON_KINDS] memory weapons;
-            uint8[NUM_DEFENCE_LEVELS] memory defence;
-            LibCombat.addSoldiers(ds, buildingInstance, actor, amount, weapons, defence);
+            _addSoldiers(ds, buildingInstance, actor, amount, [0, 0, 0, 0, 0], [0, 0, 0]);
         } else if ((bytes4)(payload) == this.continueBattle.selector) {
             LibCombat.continueBattle(ds, buildingInstance);
         } else {
@@ -52,7 +48,29 @@ contract Base is BuildingKind, IBase {
         }
     }
 
-    function _addSoldiers(Game ds, bytes24 buildingInstance, bytes24 actor, uint8 amount, uint8[NUM_WEAPON_KINDS] memory weapons, uint8[NUM_DEFENCE_LEVELS] memory defence) internal {
+    function _startBattle(Game ds, bytes24 buildingInstance) internal {
+        // NOTE: This check can be deleted if we go over the contract size limit. Just check in frontend and don't worry about cheating
+        (TeamState[] memory teamStates, /*bool isFinished*/ ) =
+            LibCombat.getBattleState(ds, buildingInstance, block.number);
+        uint8 readyTeams = 0;
+        for (uint8 i = 0; i < teamStates.length; i++) {
+            if (teamStates[i].soldierCount > 0) {
+                readyTeams++;
+            }
+        }
+        require(readyTeams > 1, "Base: At least 2 teams must have soldiers to start battle");
+
+        LibCombat.startBattle(ds, buildingInstance);
+    }
+
+    function _addSoldiers(
+        Game ds,
+        bytes24 buildingInstance,
+        bytes24 actor,
+        uint8 amount,
+        uint8[NUM_WEAPON_KINDS] memory weapons,
+        uint8[NUM_DEFENCE_LEVELS] memory defence
+    ) internal {
         // debug
         weapons[1] = amount / 2;
         defence[1] = amount / 2;
@@ -69,18 +87,18 @@ contract Base is BuildingKind, IBase {
             unarmedSoldiers -= defence[j];
         }
         defence[0] += unarmedSoldiers;
-        
+
         LibCombat.addSoldiers(ds, buildingInstance, actor, amount, weapons, defence);
     }
 
     // -- Hooks
 
-    function construct(Game ds, bytes24 /*buildingKind*/, bytes24 mobileUnitID, bytes memory coordsEncoded)
+    function construct(Game ds, bytes24, /*buildingKind*/ bytes24 mobileUnitID, bytes memory coordsEncoded)
         public
         override
     {
         State state = ds.getState();
-      
+
         // NOTE: Cannot set data in construct hook because it's fired off before owner set
 
         int16[4] memory coords = abi.decode(coordsEncoded, (int16[4]));
@@ -119,7 +137,6 @@ contract Base is BuildingKind, IBase {
         public
         returns (TeamState[] memory teamStates, bool isFinished)
     {
-
         return LibCombat.getBattleState(ds, buildingInstance, blockNumber);
     }
 }

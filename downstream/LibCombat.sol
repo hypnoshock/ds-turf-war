@@ -21,9 +21,9 @@ enum Weapon {
     Spear,
     Longbow
 }
+
 uint8 constant NUM_WEAPON_KINDS = 5;
 uint8 constant NUM_DEFENCE_LEVELS = 3;
-
 
 struct TeamState {
     uint8 team;
@@ -38,7 +38,6 @@ uint8 constant TEAM_STATE_BIT_LEN = 16 + (8 * NUM_WEAPON_KINDS) + (8 * NUM_DEFEN
 uint256 constant BATTLE_TIMEOUT_BLOCKS = 300; //60 / BLOCK_TIME_SECS;
 
 library LibCombat {
-
     function resetStartBlock(Game ds, bytes24 buildingInstance) internal {
         ds.getDispatcher().dispatch(
             abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, DATA_BATTLE_START_BLOCK, bytes32(0)))
@@ -51,7 +50,14 @@ library LibCombat {
         );
     }
 
-    function addSoldiers(Game ds, bytes24 buildingInstance, bytes24 actor, uint8 amount, uint8[NUM_WEAPON_KINDS] memory weapons, uint8[NUM_DEFENCE_LEVELS] memory defence) internal {
+    function addSoldiers(
+        Game ds,
+        bytes24 buildingInstance,
+        bytes24 actor,
+        uint8 amount,
+        uint8[NUM_WEAPON_KINDS] memory weapons,
+        uint8[NUM_DEFENCE_LEVELS] memory defence
+    ) internal {
         State state = ds.getState();
 
         bytes24 tile = state.getFixedLocation(buildingInstance);
@@ -75,7 +81,7 @@ library LibCombat {
             }
 
             initState[uint8(team) - 1].soldierCount += amount;
-            
+
             // Add weapons
             for (uint8 i = 0; i < NUM_WEAPON_KINDS; i++) {
                 initState[uint8(team) - 1].weapons[i] += weapons[i];
@@ -97,7 +103,11 @@ library LibCombat {
             ds.getDispatcher().dispatch(
                 abi.encodeCall(
                     Actions.SET_DATA_ON_BUILDING,
-                    (buildingInstance, LibUtils.getStateChangeKey(block.number), bytes32(_encodeTeamState(TeamState(uint8(team), amount, weapons, defence))))
+                    (
+                        buildingInstance,
+                        LibUtils.getStateChangeKey(block.number),
+                        bytes32(_encodeTeamState(TeamState(uint8(team), amount, weapons, defence)))
+                    )
                 )
             );
 
@@ -185,14 +195,13 @@ library LibCombat {
             uint256 stateUpdate = uint256(state.getData(buildingInstance, LibUtils.getStateChangeKey(startBlock + i)));
             if (stateUpdate != 0) {
                 TeamState memory teamState = _decodeTeamState(stateUpdate);
-                Team team = Team(teamState.team);
 
-                teamStates[uint8(team) - 1].soldierCount += teamState.soldierCount;
+                teamStates[teamState.team - 1].soldierCount += teamState.soldierCount;
                 for (uint8 j = 0; j < NUM_WEAPON_KINDS; j++) {
-                    teamStates[uint8(team) - 1].weapons[j] += teamState.weapons[j];
+                    teamStates[teamState.team - 1].weapons[j] += teamState.weapons[j];
                 }
                 for (uint8 j = 0; j < NUM_DEFENCE_LEVELS; j++) {
-                    teamStates[uint8(team) - 1].defence[j] += teamState.defence[j];
+                    teamStates[teamState.team - 1].defence[j] += teamState.defence[j];
                 }
                 rndSeed = uint256(state.getData(buildingInstance, LibUtils.getRndSeedKey(startBlock + i)));
             }
@@ -200,7 +209,7 @@ library LibCombat {
             rndSeed = uint256(keccak256(abi.encodePacked(rndSeed, i)));
 
             if (teamStates[uint8(Team.A) - 1].soldierCount == 0 || teamStates[uint8(Team.B) - 1].soldierCount == 0) {
-                return (teamStates, i > 0);
+                return (teamStates, true);
             }
 
             // Both sides have equal chance of striking regardless of the number of soldiers on their side
@@ -259,18 +268,20 @@ library LibCombat {
     function continueBattle(Game ds, bytes24 buildingInstance) internal {
         State state = ds.getState();
 
-        require(
-            state.getData(buildingInstance, DATA_BATTLE_START_BLOCK) != bytes32(0), "Base: Battle not started"
-        );
+        require(state.getData(buildingInstance, DATA_BATTLE_START_BLOCK) != bytes32(0), "Base: Battle not started");
 
         (TeamState[] memory teamStates, bool isFinished) = getBattleState(ds, buildingInstance, block.number);
 
         require(isFinished, "Base: Battle still in play");
 
-        require(teamStates[0].soldierCount > 0 && teamStates[1].soldierCount > 0, "Base: cannot continue a finished battle");
+        require(
+            teamStates[0].soldierCount > 0 && teamStates[1].soldierCount > 0, "Base: cannot continue a finished battle"
+        );
 
         ds.getDispatcher().dispatch(
-            abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (buildingInstance, DATA_INIT_STATE, _encodeInitState(teamStates)))
+            abi.encodeCall(
+                Actions.SET_DATA_ON_BUILDING, (buildingInstance, DATA_INIT_STATE, _encodeInitState(teamStates))
+            )
         );
 
         ds.getDispatcher().dispatch(
@@ -287,5 +298,4 @@ library LibCombat {
             )
         );
     }
-
 }
