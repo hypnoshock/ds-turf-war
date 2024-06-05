@@ -10,7 +10,7 @@ import {LibString} from "./LibString.sol";
 import {LibUtils} from "./LibUtils.sol";
 import {IZone, GAME_STATE, DATA_SELECTED_LEVEL, Team} from "./IZone.sol";
 import {IBase} from "./IBase.sol";
-import {LibCombat, TeamState, DATA_INIT_STATE, NUM_WEAPON_KINDS, NUM_DEFENCE_LEVELS} from "./LibCombat.sol";
+import {LibCombat, BattalionState, DATA_INIT_STATE, NUM_WEAPON_KINDS, NUM_DEFENCE_LEVELS} from "./LibCombat.sol";
 
 using Schema for State;
 
@@ -50,11 +50,11 @@ contract Base is BuildingKind, IBase {
 
     function _startBattle(Game ds, bytes24 buildingInstance) internal {
         // NOTE: This check can be deleted if we go over the contract size limit. Just check in frontend and don't worry about cheating
-        (TeamState[] memory teamStates, /*bool isFinished*/ ) =
+        (BattalionState[] memory battalionStates, /*bool isFinished*/ ) =
             LibCombat.getBattleState(ds, buildingInstance, block.number);
         uint8 readyTeams = 0;
-        for (uint8 i = 0; i < teamStates.length; i++) {
-            if (teamStates[i].soldierCount > 0) {
+        for (uint8 i = 0; i < battalionStates.length; i++) {
+            if (battalionStates[i].soldierCount > 0) {
                 readyTeams++;
             }
         }
@@ -113,16 +113,19 @@ contract Base is BuildingKind, IBase {
 
         bytes24 tile = state.getFixedLocation(buildingInstance);
 
-        (TeamState[] memory teamStates, bool isFinished) = LibCombat.getBattleState(ds, buildingInstance, block.number);
+        (BattalionState[] memory battalionStates, bool isFinished) =
+            LibCombat.getBattleState(ds, buildingInstance, block.number);
 
         require(isFinished, "Battle not finished yet");
-        require(teamStates[0].soldierCount == 0 || teamStates[1].soldierCount == 0, "Base: Battle is not finished");
+        require(
+            battalionStates[0].soldierCount == 0 || battalionStates[1].soldierCount == 0, "Base: Battle is not finished"
+        );
 
         LibCombat.resetStartBlock(ds, buildingInstance);
         // NOTE: Remember to enode state instead of clearing if we decide not to destroy buildings on win
         LibCombat.resetInitState(ds, buildingInstance);
 
-        Team winningTeam = teamStates[0].soldierCount == 0 ? Team.B : Team.A;
+        Team winningTeam = battalionStates[0].soldierCount == 0 ? Team.B : Team.A;
 
         bytes24 zone = Node.Zone(LibUtils.getTileZone(tile));
         Team team = LibUtils.getUnitTeam(state, zone, actor);
@@ -135,7 +138,7 @@ contract Base is BuildingKind, IBase {
 
     function getBattleState(Game ds, bytes24 buildingInstance, uint256 blockNumber)
         public
-        returns (TeamState[] memory teamStates, bool isFinished)
+        returns (BattalionState[] memory battalionStates, bool isFinished)
     {
         return LibCombat.getBattleState(ds, buildingInstance, blockNumber);
     }

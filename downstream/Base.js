@@ -11,7 +11,7 @@ const networkEndpoint = ds.config.networkEndpoint;
 const gameContractAddr = getGameContractAddr(ds.config.networkName);
 
 let battleState = {
-  teamState: [],
+  battalionState: [],
   isFinished: false,
 };
 
@@ -270,14 +270,14 @@ function fetchBattleState(building, block) {
         return;
       }
 
-      const [teamStates, isFinished] = ds.abiDecode(
+      const [battalionStates, isFinished] = ds.abiDecode(
         ["(uint8,uint8,uint8[5],uint8[3])[]", "bool"],
         data.result
       );
 
       battleState = {
-        teamState: teamStates.map((teamState, idx) => {
-          const [_teamId, soldierCount, weapons, defence] = teamState;
+        battalionState: battalionStates.map((battalionState, idx) => {
+          const [_teamId, soldierCount, weapons, defence] = battalionState;
           // TODO: Currently using idx to determine team key, this is not safe when we have more than 2 players
           const teamKey = idx === 0 ? TEAM_A : TEAM_B;
           return { teamKey, soldierCount, weapons, defence };
@@ -338,11 +338,13 @@ function getTeam(teamAPlayers, teamBPlayers, playerId) {
 }
 
 function getSoldierCount(battleState, teamKey) {
-  const teamState = battleState.teamState.find((t) => t.teamKey === teamKey);
-  if (!teamState) {
+  const battalionState = battleState.battalionState.find(
+    (t) => t.teamKey === teamKey
+  );
+  if (!battalionState) {
     return 0;
   }
-  return teamState.soldierCount;
+  return battalionState.soldierCount;
 }
 
 // ---- helper functions ----

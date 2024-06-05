@@ -22,8 +22,8 @@ contract TurfWarsZone is ZoneKind, IZone {
     // function claim() external {}
 
     int16 constant DEFAULT_CLAIM_RANGE = 2;
-    uint64 constant DEFAULT_GAME_DURATION_BLOCKS = 120 * 60 / BLOCK_TIME_SECS; // (15 * 60) 
-    uint64 constant DEFAULT_HAMMER_COUNT = 2;
+    uint64 constant DEFAULT_GAME_DURATION_BLOCKS = 120 * 60 / BLOCK_TIME_SECS; // (15 * 60)
+    uint64 constant DEFAULT_HAMMER_COUNT = 10;
 
     // Data keys
     string constant DATA_GAME_STATE = "gameState";
@@ -47,8 +47,11 @@ contract TurfWarsZone is ZoneKind, IZone {
                 abi.decode(payload[4:], (bytes24[], bytes24[]));
             _reset(ds, state, zoneID, dirtyTiles, baseBuildings);
         } else if ((bytes4)(payload) == this.destroyTileBag.selector) {
-            (bytes24 tileID, bytes24 bagID, bytes24[] memory slotContents) = abi.decode(payload[4:], (bytes24, bytes24, bytes24[]));
-            ds.getDispatcher().dispatch(abi.encodeCall(Actions.DEV_DESTROY_BAG, (bagID, address(0), tileID, uint8(0), slotContents)));
+            (bytes24 tileID, bytes24 bagID, bytes24[] memory slotContents) =
+                abi.decode(payload[4:], (bytes24, bytes24, bytes24[]));
+            ds.getDispatcher().dispatch(
+                abi.encodeCall(Actions.DEV_DESTROY_BAG, (bagID, address(0), tileID, uint8(0), slotContents))
+            );
         } else {
             revert("TurfWarsZone: Invalid function signature");
         }
@@ -56,7 +59,7 @@ contract TurfWarsZone is ZoneKind, IZone {
 
     // TODO: only bases can call this
     function setAreaWinner(Game ds, bytes24 origin, bytes24 mobileUnit, bool destroyBuilding) public {
-        (int16 originZ, int16 originQ, int16 originR, int16 originS ) = getTileCoords(origin);
+        (int16 originZ, int16 originQ, int16 originR, int16 originS) = getTileCoords(origin);
         bytes24 zoneID = Node.Zone(originZ);
 
         State state = ds.getState();
@@ -87,7 +90,9 @@ contract TurfWarsZone is ZoneKind, IZone {
 
         if (destroyBuilding) {
             _spawnHammer(ds, origin, 1);
-            ds.getDispatcher().dispatch(abi.encodeCall(Actions.DEV_DESTROY_BUILDING, (originZ, originQ, originR, originS)));
+            ds.getDispatcher().dispatch(
+                abi.encodeCall(Actions.DEV_DESTROY_BUILDING, (originZ, originQ, originR, originS))
+            );
         }
     }
 
@@ -175,7 +180,9 @@ contract TurfWarsZone is ZoneKind, IZone {
         }
 
         // Check if unit has already joined
-        if (LibUtils.isUnitInTeam(state, zoneID, TEAM_A, unitID) || LibUtils.isUnitInTeam(state, zoneID, TEAM_B, unitID)) {
+        if (
+            LibUtils.isUnitInTeam(state, zoneID, TEAM_A, unitID) || LibUtils.isUnitInTeam(state, zoneID, TEAM_B, unitID)
+        ) {
             revert("Already joined");
         }
 
@@ -282,7 +289,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         internal
     {
         Dispatcher dispatcher = ds.getDispatcher();
-        
+
         // TODO: If game is finished, check that claims have been made before allowing reset
         // if (getGameState(state, zoneID) == GAME_STATE.FINISHED) {
         //     require(state.getData(zoneID, DATA_HAS_CLAIMED_PRIZES) == bytes32(uint256(1)));
@@ -339,7 +346,6 @@ contract TurfWarsZone is ZoneKind, IZone {
         GAME_STATE gameState = getGameState(state, zoneID);
 
         if (gameState == GAME_STATE.NOT_STARTED) {
-
             // NOTE: Contract at size limit. Removing movement restrictions for now
 
             // -- Unit move locking
@@ -371,8 +377,8 @@ contract TurfWarsZone is ZoneKind, IZone {
 
             // revert("Unit cannot move, Game not started");
         } else if (gameState == GAME_STATE.IN_PROGRESS) {
-            bool isUnitInTeam =
-                LibUtils.isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID) || LibUtils.isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
+            bool isUnitInTeam = LibUtils.isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID)
+                || LibUtils.isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
             require(isUnitInTeam, "Cannot move, unit not on a team");
 
             // Claim unclaimed tile
@@ -407,17 +413,20 @@ contract TurfWarsZone is ZoneKind, IZone {
         revert("Combat not supported in this zone");
     }
 
-    
     // NOTE: Contract close to size limit. This can get dropped if we need more space. Below is ~500bytes
     bytes24 constant BASE_BUILDING = 0xbe92755c0000000000000000a9c1e4010000000000000004;
-    function onContructBuilding(Game ds, bytes24 zoneID, bytes24 /*mobileUnitID*/, bytes24 buildingInstance)
+
+    function onContructBuilding(Game ds, bytes24 zoneID, bytes24 mobileUnitID, bytes24 buildingInstance)
         external
         override
     {
         State state = ds.getState();
-        require (getGameState(state, zoneID) == GAME_STATE.IN_PROGRESS, "Cannot build until game starts");
+        require(getGameState(state, zoneID) == GAME_STATE.IN_PROGRESS, "Cannot build until game starts");
         bytes24 buildingKind = state.getBuildingKind(buildingInstance);
         require(buildingKind == BASE_BUILDING, "Only base buildings can be constructed in this zone");
+
+        // Team can only directly build one base
+        // Team team = LibUtils.getUnitTeam(state, zoneID, mobileUnitID);
     }
 
     // -- Helpers
