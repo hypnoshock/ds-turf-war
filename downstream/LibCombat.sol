@@ -14,12 +14,26 @@ using Schema for State;
 string constant DATA_BATTLE_START_BLOCK = "battleStartBlock";
 string constant DATA_INIT_STATE = "initState";
 
+enum Weapon {
+    None,
+    Rock,
+    Slingshot,
+    Spear,
+    Longbow
+}
+uint8 constant NUM_WEAPON_KINDS = 5;
+uint8 constant NUM_DEFENCE_LEVELS = 3;
+
+
 struct TeamState {
     uint8 team;
     uint8 soldierCount;
+    uint8[NUM_WEAPON_KINDS] weapons;
+    uint8[NUM_DEFENCE_LEVELS] defence;
 }
 
-uint8 constant TEAM_STATE_BIT_LEN = 16;
+// NOTE: If encoding state in one 32 byte slot, we can only have 3 teams
+uint8 constant TEAM_STATE_BIT_LEN = 16 + (8 * NUM_WEAPON_KINDS) + (8 * NUM_DEFENCE_LEVELS);
 
 uint256 constant BATTLE_TIMEOUT_BLOCKS = 300; //60 / BLOCK_TIME_SECS;
 
@@ -37,7 +51,7 @@ library LibCombat {
         );
     }
 
-    function addSoldiers(Game ds, bytes24 buildingInstance, bytes24 actor, uint8 amount) internal {
+    function addSoldiers(Game ds, bytes24 buildingInstance, bytes24 actor, uint8 amount, uint8[NUM_WEAPON_KINDS] memory weapons, uint8[NUM_DEFENCE_LEVELS] memory defence) internal {
         State state = ds.getState();
 
         bytes24 tile = state.getFixedLocation(buildingInstance);
@@ -61,6 +75,16 @@ library LibCombat {
             }
 
             initState[uint8(team) - 1].soldierCount += amount;
+            
+            // Add weapons
+            for (uint8 i = 0; i < NUM_WEAPON_KINDS; i++) {
+                initState[uint8(team) - 1].weapons[i] += weapons[i];
+            }
+
+            // Add defence
+            for (uint8 i = 0; i < NUM_DEFENCE_LEVELS; i++) {
+                initState[uint8(team) - 1].defence[i] += defence[i];
+            }
 
             ds.getDispatcher().dispatch(
                 abi.encodeCall(
@@ -73,7 +97,7 @@ library LibCombat {
             ds.getDispatcher().dispatch(
                 abi.encodeCall(
                     Actions.SET_DATA_ON_BUILDING,
-                    (buildingInstance, LibUtils.getStateChangeKey(block.number), _encodeStateUpdate(team, amount))
+                    (buildingInstance, LibUtils.getStateChangeKey(block.number), bytes32(_encodeTeamState(TeamState(uint8(team), amount, weapons, defence))))
                 )
             );
 
@@ -88,33 +112,44 @@ library LibCombat {
     }
 
     function _encodeInitState(TeamState[] memory initState) internal pure returns (bytes32) {
-        // TODO: Check if encoded init state is less than 32 bytes
-        bytes32 encoded = bytes32(initState.length);
+        bytes32 encodedInitState = bytes32(initState.length);
         for (uint256 i = 0; i < initState.length; i++) {
-            encoded |= bytes32(
-                (uint256(initState[i].team) | uint256(initState[i].soldierCount) << 8) << (8 + (TEAM_STATE_BIT_LEN * i))
-            );
+            uint256 encodedTeamState = _encodeTeamState(initState[i]);
+            encodedInitState |= bytes32(encodedTeamState << (8 + (TEAM_STATE_BIT_LEN * i)));
         }
-        return encoded;
+        return encodedInitState;
     }
 
     function _decodeInitState(bytes32 initStateEncoded) internal pure returns (TeamState[] memory) {
         uint8 length = uint8(uint256(initStateEncoded) & 0xff);
         TeamState[] memory initState = new TeamState[](length);
         for (uint8 i = 0; i < length; i++) {
-            uint256 teamStateEncoded = uint256(initStateEncoded >> (8 + (TEAM_STATE_BIT_LEN * i)));
-            initState[i].team = uint8(teamStateEncoded & 0xff);
-            initState[i].soldierCount = uint8((teamStateEncoded >> 8) & 0xff);
+            uint256 teamStateEncoded = uint256(initStateEncoded >> (8 + (TEAM_STATE_BIT_LEN * i))); // number of teams
+            initState[i] = _decodeTeamState(teamStateEncoded);
         }
         return initState;
     }
 
-    function _encodeStateUpdate(Team team, uint8 soldierAmount) internal pure returns (bytes32) {
-        return bytes32(uint256(team) | (uint256(soldierAmount) << 8));
+    function _encodeTeamState(TeamState memory teamState) internal pure returns (uint256) {
+        uint256 encodedTeamState = uint256(teamState.team) | uint256(teamState.soldierCount) << 8;
+        for (uint8 j = 0; j < NUM_WEAPON_KINDS; j++) {
+            encodedTeamState |= uint256(teamState.weapons[j]) << (16 + (8 * j));
+        }
+        for (uint8 j = 0; j < NUM_DEFENCE_LEVELS; j++) {
+            encodedTeamState |= uint256(teamState.defence[j]) << (16 + (8 * NUM_WEAPON_KINDS) + (8 * j));
+        }
+        return encodedTeamState;
     }
 
-    function _decodeStateUpdate(bytes32 stateUpdate) internal pure returns (Team team, uint8 soldierAmount) {
-        return (Team(uint8(uint256(stateUpdate))), uint8(uint256(stateUpdate) >> 8));
+    function _decodeTeamState(uint256 teamStateEncoded) internal pure returns (TeamState memory teamState) {
+        teamState.team = uint8(teamStateEncoded & 0xff);
+        teamState.soldierCount = uint8((teamStateEncoded >> 8) & 0xff);
+        for (uint8 j = 0; j < NUM_WEAPON_KINDS; j++) {
+            teamState.weapons[j] = uint8((teamStateEncoded >> (16 + (8 * j)) & 0xff));
+        }
+        for (uint8 j = 0; j < NUM_DEFENCE_LEVELS; j++) {
+            teamState.defence[j] = uint8((teamStateEncoded >> (16 + (8 * NUM_WEAPON_KINDS) + (8 * j)) & 0xff));
+        }
     }
 
     function getBattleState(Game ds, bytes24 buildingInstance, uint256 blockNumber)
@@ -145,14 +180,20 @@ library LibCombat {
             isFinished = true;
         }
 
-        // TODO: Find the team that is on defence so we know who attacks first
-
         uint256 rndSeed = uint256(state.getData(buildingInstance, LibUtils.getRndSeedKey(startBlock)));
         for (uint256 i = 0; i < totalBlocks; i++) {
-            bytes32 stateUpdate = state.getData(buildingInstance, LibUtils.getStateChangeKey(startBlock + i));
-            if (stateUpdate != bytes32(0)) {
-                (Team team, uint8 soldierAmount) = _decodeStateUpdate(stateUpdate);
-                teamStates[uint8(team) - 1].soldierCount += soldierAmount;
+            uint256 stateUpdate = uint256(state.getData(buildingInstance, LibUtils.getStateChangeKey(startBlock + i)));
+            if (stateUpdate != 0) {
+                TeamState memory teamState = _decodeTeamState(stateUpdate);
+                Team team = Team(teamState.team);
+
+                teamStates[uint8(team) - 1].soldierCount += teamState.soldierCount;
+                for (uint8 j = 0; j < NUM_WEAPON_KINDS; j++) {
+                    teamStates[uint8(team) - 1].weapons[j] += teamState.weapons[j];
+                }
+                for (uint8 j = 0; j < NUM_DEFENCE_LEVELS; j++) {
+                    teamStates[uint8(team) - 1].defence[j] += teamState.defence[j];
+                }
                 rndSeed = uint256(state.getData(buildingInstance, LibUtils.getRndSeedKey(startBlock + i)));
             }
 
@@ -162,12 +203,15 @@ library LibCombat {
                 return (teamStates, i > 0);
             }
 
+            // Both sides have equal chance of striking regardless of the number of soldiers on their side
             if (rndSeed & 0xff > 127) {
+                // Team A strikes
                 teamStates[uint8(Team.B) - 1].soldierCount--;
                 if (teamStates[uint8(Team.B) - 1].soldierCount == 0) {
                     return (teamStates, true);
                 }
             } else {
+                // Team B strikes
                 teamStates[uint8(Team.A) - 1].soldierCount--;
                 if (teamStates[uint8(Team.A) - 1].soldierCount == 0) {
                     return (teamStates, true);

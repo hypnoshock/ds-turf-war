@@ -10,7 +10,7 @@ import {LibString} from "./LibString.sol";
 import {LibUtils} from "./LibUtils.sol";
 import {IZone, GAME_STATE, DATA_SELECTED_LEVEL, Team} from "./IZone.sol";
 import {IBase} from "./IBase.sol";
-import {LibCombat, TeamState, DATA_INIT_STATE} from "./LibCombat.sol";
+import {LibCombat, TeamState, DATA_INIT_STATE, NUM_WEAPON_KINDS, NUM_DEFENCE_LEVELS} from "./LibCombat.sol";
 
 using Schema for State;
 
@@ -42,12 +42,35 @@ contract Base is BuildingKind, IBase {
             _claimWin(ds, buildingInstance, actor);
         } else if ((bytes4)(payload) == this.addSoldiers.selector) {
             (uint8 amount) = abi.decode(payload[4:], (uint8));
-            LibCombat.addSoldiers(ds, buildingInstance, actor, amount);
+            uint8[NUM_WEAPON_KINDS] memory weapons;
+            uint8[NUM_DEFENCE_LEVELS] memory defence;
+            LibCombat.addSoldiers(ds, buildingInstance, actor, amount, weapons, defence);
         } else if ((bytes4)(payload) == this.continueBattle.selector) {
             LibCombat.continueBattle(ds, buildingInstance);
         } else {
             revert("Invalid function selector");
         }
+    }
+
+    function _addSoldiers(Game ds, bytes24 buildingInstance, bytes24 actor, uint8 amount, uint8[NUM_WEAPON_KINDS] memory weapons, uint8[NUM_DEFENCE_LEVELS] memory defence) internal {
+        // debug
+        weapons[1] = amount / 2;
+        defence[1] = amount / 2;
+
+        // Make sure total weapons and defence is equal to the amount of soldiers we are adding
+        uint8 unarmedSoldiers = amount;
+        for (uint8 j = 0; j < NUM_WEAPON_KINDS; j++) {
+            unarmedSoldiers -= weapons[j];
+        }
+        weapons[0] += unarmedSoldiers;
+
+        unarmedSoldiers = amount;
+        for (uint8 j = 0; j < NUM_DEFENCE_LEVELS; j++) {
+            unarmedSoldiers -= defence[j];
+        }
+        defence[0] += unarmedSoldiers;
+        
+        LibCombat.addSoldiers(ds, buildingInstance, actor, amount, weapons, defence);
     }
 
     // -- Hooks

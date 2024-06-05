@@ -57,6 +57,7 @@ export default async function update(state, block) {
   // const winner = getData(selectedBuilding, getTileWinnerKey(selectedBuilding));
   // console.log("matchID", matchID);
   // console.log("winner", winner);
+  console.log("battleState", battleState);
 
   //--  Fetch the latest state
 
@@ -270,16 +271,16 @@ function fetchBattleState(building, block) {
       }
 
       const [teamStates, isFinished] = ds.abiDecode(
-        ["(uint8,uint8)[]", "bool"],
+        ["(uint8,uint8,uint8[5],uint8[3])[]", "bool"],
         data.result
       );
 
       battleState = {
         teamState: teamStates.map((teamState, idx) => {
-          const [_teamId, soldierCount] = teamState;
+          const [_teamId, soldierCount, weapons, defence] = teamState;
           // TODO: Currently using idx to determine team key, this is not safe when we have more than 2 players
           const teamKey = idx === 0 ? TEAM_A : TEAM_B;
-          return { teamKey, soldierCount };
+          return { teamKey, soldierCount, weapons, defence };
         }),
         isFinished,
       };
@@ -433,18 +434,6 @@ function getCompatibleOrEmptySlot(mobileUnit, itemName, quantity = 1) {
 }
 
 // -- Match Data
-
-function getSoldierCountKey(teamKey) {
-  return teamKey + "_soldierCount";
-}
-
-function getTileMatchKey(tileId) {
-  return tileId + "_entityID";
-}
-
-function getTileMatchTimeoutBlockKey(tileId) {
-  return tileId + "_matchTimeoutBlock";
-}
 
 function getTileWinnerKey(tileId) {
   return tileId + "_winner";
