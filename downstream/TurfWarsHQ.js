@@ -9,7 +9,7 @@ const BLOCK_TIME_SECS = 2;
 const GAME_STATE_NOT_STARTED = 0;
 const GAME_STATE_IN_PROGRESS = 1;
 const GAME_STATE_FINISHED = 2;
-const START_HAMMER_QTY = 2;
+const START_HAMMER_QTY = 10;
 
 const DATA_HAS_CLAIMED_PRIZES = "hasClaimedPrizes";
 

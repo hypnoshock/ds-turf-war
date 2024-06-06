@@ -30,6 +30,10 @@ library LibUtils {
         return string(abi.encodePacked("stateChange_", LibString.toHexString(uint64(blockNumber), 8)));
     }
 
+    function getTeamStateKey(Team team) internal pure returns (string memory) {
+        return string(abi.encodePacked("team", LibString.toString(uint256(team)), "_teamState"));
+    }
+
     function getTileMatchTimeoutBlockKey(bytes24 tile) internal pure returns (string memory) {
         return string(abi.encodePacked(LibString.toHexString(uint192(bytes24(tile)), 24), "_matchTimeoutBlock"));
     }

@@ -16,6 +16,8 @@ const RIGHT_COUNTER_MSG = "_-`'´-";
 
 export default async function update(state, block) {
   const zone = state.world;
+
+  console.log("Zone", zone);
   // const implementationAddr = zone.kind.implementation.id.slice(-40);
   // console.log("Judge implementationAddr", implementationAddr);
 

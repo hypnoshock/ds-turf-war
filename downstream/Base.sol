@@ -142,4 +142,8 @@ contract Base is BuildingKind, IBase {
     {
         return LibCombat.getBattleState(ds, buildingInstance, blockNumber);
     }
+
+    // function getPopulation(Game ds, bytes24 buildingInstance) public returns (uint64) {
+    //     return LibCombat.getPopulation(ds, buildingInstance);
+    // }
 }

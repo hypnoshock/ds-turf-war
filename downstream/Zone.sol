@@ -8,6 +8,7 @@ import {Schema, CombatWinState, Node, Q, R, S, BLOCK_TIME_SECS} from "@ds/schema
 import {ZoneKind} from "@ds/ext/ZoneKind.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {LibUtils} from "./LibUtils.sol";
+import {LibTeamState, TeamState} from "./LibTeamState.sol";
 import {IZone, GAME_STATE, HAMMER_ITEM, PRIZE_ITEM, Team, TEAM_A, TEAM_B, DATA_HAS_CLAIMED_PRIZES} from "./IZone.sol";
 import "@ds/utils/LibString.sol";
 
@@ -334,6 +335,8 @@ contract TurfWarsZone is ZoneKind, IZone {
         _setDataOnZone(dispatcher, zoneID, DATA_READY, bytes32(uint256(Team.NONE)));
         _setDataOnZone(dispatcher, zoneID, DATA_END_BLOCK, bytes32(uint256(block.number)));
         _setDataOnZone(dispatcher, zoneID, DATA_HAS_CLAIMED_PRIZES, bytes32(0));
+        _setDataOnZone(dispatcher, zoneID, LibUtils.getTeamStateKey(Team.A), bytes32(0));
+        _setDataOnZone(dispatcher, zoneID, LibUtils.getTeamStateKey(Team.B), bytes32(0));
     }
 
     // -- Hooks
@@ -423,10 +426,26 @@ contract TurfWarsZone is ZoneKind, IZone {
         State state = ds.getState();
         require(getGameState(state, zoneID) == GAME_STATE.IN_PROGRESS, "Cannot build until game starts");
         bytes24 buildingKind = state.getBuildingKind(buildingInstance);
-        require(buildingKind == BASE_BUILDING, "Only base buildings can be constructed in this zone");
 
-        // Team can only directly build one base
-        // Team team = LibUtils.getUnitTeam(state, zoneID, mobileUnitID);
+        // require(buildingKind == BASE_BUILDING, "Only base buildings can be constructed in this zone");
+
+        if (buildingKind == BASE_BUILDING) {
+            // Team can only directly build one base
+            Team team = LibUtils.getUnitTeam(state, zoneID, mobileUnitID);
+            TeamState memory teamState =
+                LibTeamState.decodeTeamState(uint256(state.getData(zoneID, LibUtils.getTeamStateKey(team))));
+
+            require(!teamState.hasPlacedInitHQ, "Team has already placed a base");
+
+            teamState.hasPlacedInitHQ = true;
+
+            _setDataOnZone(
+                ds.getDispatcher(),
+                zoneID,
+                LibUtils.getTeamStateKey(team),
+                bytes32(LibTeamState.encodeTeamState(teamState))
+            );
+        }
     }
 
     // -- Helpers

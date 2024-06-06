@@ -57,7 +57,7 @@ export default async function update(state, block) {
   // const winner = getData(selectedBuilding, getTileWinnerKey(selectedBuilding));
   // console.log("matchID", matchID);
   // console.log("winner", winner);
-  console.log("battleState", battleState);
+  // console.log("battleState", battleState);
 
   //--  Fetch the latest state
 
