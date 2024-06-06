@@ -6,6 +6,8 @@ const BLOCK_TIME_SECS = 2;
 const TEAM_A = "team1";
 const TEAM_B = "team2";
 const DATA_BATTLE_START_BLOCK = "battleStartBlock";
+const HAMMER_EQUIP_SLOT = 0;
+const SOLDIER_EQUIP_SLOT = 1;
 const func = ds;
 const networkEndpoint = ds.config.networkEndpoint;
 const gameContractAddr = getGameContractAddr(ds.config.networkName);
@@ -130,10 +132,14 @@ export default async function update(state, block) {
 
   const claimWin = () => {
     const payload = ds.encodeCall("function claimWin()", []);
-    const bagID = generateDevBagId(selectedBuilding.location.tile);
-    const [toEquipSlot, toItemSlot] = getCompatibleOrEmptySlot(
+    const [toHammerEquipSlot, toHammerItemSlot] = getCompatibleOrEmptySlot(
       mobileUnit,
       "TW Hammer",
+      1
+    );
+    const [toSoldierEquipSlot, toSoldierItemSlot] = getCompatibleOrEmptySlot(
+      mobileUnit,
+      "TW Soldier",
       1
     );
 
@@ -144,19 +150,53 @@ export default async function update(state, block) {
       },
     ];
 
-    // If attackers win, then they gain a hammer
+    // If attackers win, then they gain a hammer and their soldiers
     const attackersWin = attackers > defenders;
     if (attackersWin) {
+      const hammerBagID = generateDevBagId(
+        selectedBuilding.location.tile,
+        HAMMER_EQUIP_SLOT
+      );
+      const soldierBagID = generateDevBagId(
+        selectedBuilding.location.tile,
+        SOLDIER_EQUIP_SLOT
+      );
       actions.push(
         {
           name: "TRANSFER_ITEM_MOBILE_UNIT",
           args: [
             mobileUnit.id,
             [selectedBuilding.location.tile.id, mobileUnit.id],
-            [0, toEquipSlot],
-            [0, toItemSlot],
+            [HAMMER_EQUIP_SLOT, toHammerEquipSlot],
+            [0, toHammerItemSlot],
             nullBytes24,
             1, // Claim hammer
+          ],
+        },
+        {
+          name: "TRANSFER_ITEM_MOBILE_UNIT",
+          args: [
+            mobileUnit.id,
+            [selectedBuilding.location.tile.id, mobileUnit.id],
+            [SOLDIER_EQUIP_SLOT, toSoldierEquipSlot],
+            [0, toSoldierItemSlot],
+            nullBytes24,
+            attackers, // Claim soldiers
+          ],
+        },
+        // Cleanup the temp bags
+        {
+          name: "ZONE_USE",
+          args: [
+            mobileUnit.id,
+            ds.encodeCall(
+              "function destroyTileBag(bytes24,bytes24,bytes24[])",
+              [
+                selectedBuilding.location.tile.id,
+                hammerBagID,
+                [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
+              ]
+            ),
           ],
         },
         {
@@ -167,7 +207,7 @@ export default async function update(state, block) {
               "function destroyTileBag(bytes24,bytes24,bytes24[])",
               [
                 selectedBuilding.location.tile.id,
-                bagID,
+                soldierBagID,
                 [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
               ]
             ),

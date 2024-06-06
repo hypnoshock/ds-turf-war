@@ -29,4 +29,5 @@ interface IZone {
     function spawnPrizes(Game ds, bytes24 tileID, uint64 count) external;
     function setHasClaimedPrizes(Game ds, bytes24 zoneID) external;
     function burnTileBag(Game ds, bytes24 tile, bytes24 bagID, uint8 equipSlot) external;
+    function spawnSoldier(Game ds, bytes24 tileID, uint64 count) external;
 }

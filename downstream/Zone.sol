@@ -8,6 +8,7 @@ import {Schema, CombatWinState, Node, Q, R, S, BLOCK_TIME_SECS} from "@ds/schema
 import {ZoneKind} from "@ds/ext/ZoneKind.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {LibUtils} from "./LibUtils.sol";
+import {SOLDIER_ITEM} from "./LibCombat.sol";
 import {LibTeamState, TeamState} from "./LibTeamState.sol";
 import {IZone, GAME_STATE, HAMMER_ITEM, PRIZE_ITEM, Team, TEAM_A, TEAM_B, DATA_HAS_CLAIMED_PRIZES} from "./IZone.sol";
 import "@ds/utils/LibString.sol";
@@ -203,7 +204,11 @@ contract TurfWarsZone is ZoneKind, IZone {
     }
 
     function _spawnHammer(Game ds, bytes24 tileID, uint64 count) private {
-        _spawnItem(ds.getDispatcher(), tileID, HAMMER_ITEM, count);
+        _spawnItem(ds.getDispatcher(), tileID, HAMMER_ITEM, count, 0);
+    }
+
+    function spawnSoldier(Game ds, bytes24 tileID, uint64 count) public {
+        _spawnItem(ds.getDispatcher(), tileID, SOLDIER_ITEM, count, 1);
     }
 
     // TODO: restrict to TurfWarsHQ
@@ -211,7 +216,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         // address hqImpl = ds.getState().getImplementation(TURFWARS_HQ);
         // require(msg.sender == hqImpl, "Only TurfWarsHQ can call this");
 
-        _spawnItem(ds.getDispatcher(), tileID, PRIZE_ITEM, count);
+        _spawnItem(ds.getDispatcher(), tileID, PRIZE_ITEM, count, 0);
     }
 
     // TODO: restrict to TurfWarsHQ
@@ -222,7 +227,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         _setDataOnZone(ds.getDispatcher(), zoneID, DATA_HAS_CLAIMED_PRIZES, bytes32(uint256(1)));
     }
 
-    function _spawnItem(Dispatcher dispatcher, bytes24 tileID, bytes24 item, uint64 count) private {
+    function _spawnItem(Dispatcher dispatcher, bytes24 tileID, bytes24 item, uint64 count, uint8 equipSlot) private {
         (int16 z, int16 q, int16 r, int16 s) = getTileCoords(tileID);
 
         bytes24[] memory items = new bytes24[](4);
@@ -236,20 +241,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         balances[2] = 0;
         balances[3] = 0;
 
-        dispatcher.dispatch(
-            abi.encodeCall(
-                Actions.DEV_SPAWN_BAG,
-                (
-                    z,
-                    q,
-                    r,
-                    s,
-                    uint8(0), // equip slot
-                    items,
-                    balances
-                )
-            )
-        );
+        dispatcher.dispatch(abi.encodeCall(Actions.DEV_SPAWN_BAG, (z, q, r, s, equipSlot, items, balances)));
     }
 
     function _assignUnitToTeam(Game ds, string memory team, uint64 teamLength, bytes24 unitID, bytes24 zoneID)

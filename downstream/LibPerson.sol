@@ -11,7 +11,7 @@ import {LibUtils} from "./LibUtils.sol";
 
 using Schema for State;
 
-bytes24 constant PERSON_ITEM = 0x6a7a67f05c334a0b000000010000000a0000000a00000028;
+bytes24 constant PERSON_ITEM = 0x6a7a67f0ca70a860000000010000000a000000280000000a;
 
 library LibPerson {
     function addPerson(Game ds, bytes24 buildingInstance, bytes24 actor, uint8 amount) internal {

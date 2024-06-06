@@ -162,7 +162,7 @@ contract Base is BuildingKind, IBase {
             IZone zoneImpl = IZone(state.getImplementation(zone));
             zoneImpl.setAreaWinner(ds, tile, actor, true);
 
-            // Where do the soldiers go?
+            zoneImpl.spawnSoldier(ds, tile, battalionStates[uint8(winningTeam) - 1].soldierCount);
         }
     }
 
