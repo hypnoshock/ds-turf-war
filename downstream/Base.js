@@ -131,40 +131,52 @@ export default async function update(state, block) {
   const claimWin = () => {
     const payload = ds.encodeCall("function claimWin()", []);
     const bagID = generateDevBagId(selectedBuilding.location.tile);
-    console.log("bagID", bagID);
     const [toEquipSlot, toItemSlot] = getCompatibleOrEmptySlot(
       mobileUnit,
       "TW Hammer",
       1
     );
-    ds.dispatch(
+
+    const actions = [
       {
         name: "BUILDING_USE",
         args: [selectedBuilding.id, mobileUnit.id, payload],
       },
-      {
-        name: "TRANSFER_ITEM_MOBILE_UNIT",
-        args: [
-          mobileUnit.id,
-          [selectedBuilding.location.tile.id, mobileUnit.id],
-          [0, toEquipSlot],
-          [0, toItemSlot],
-          nullBytes24,
-          1, // Claim hammer
-        ],
-      },
-      {
-        name: "ZONE_USE",
-        args: [
-          mobileUnit.id,
-          ds.encodeCall("function destroyTileBag(bytes24,bytes24,bytes24[])", [
-            selectedBuilding.location.tile.id,
-            bagID,
-            [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
-          ]),
-        ],
-      }
-    );
+    ];
+
+    // If attackers win, then they gain a hammer
+    const attackersWin = attackers > defenders;
+    if (attackersWin) {
+      actions.push(
+        {
+          name: "TRANSFER_ITEM_MOBILE_UNIT",
+          args: [
+            mobileUnit.id,
+            [selectedBuilding.location.tile.id, mobileUnit.id],
+            [0, toEquipSlot],
+            [0, toItemSlot],
+            nullBytes24,
+            1, // Claim hammer
+          ],
+        },
+        {
+          name: "ZONE_USE",
+          args: [
+            mobileUnit.id,
+            ds.encodeCall(
+              "function destroyTileBag(bytes24,bytes24,bytes24[])",
+              [
+                selectedBuilding.location.tile.id,
+                bagID,
+                [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
+              ]
+            ),
+          ],
+        }
+      );
+    }
+
+    ds.dispatch(...actions);
   };
 
   const battleStartBlock = getDataInt(

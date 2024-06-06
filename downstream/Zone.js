@@ -17,7 +17,7 @@ const RIGHT_COUNTER_MSG = "_-`'´-";
 export default async function update(state, block) {
   const zone = state.world;
 
-  console.log("Zone", zone);
+  // console.log("Zone", zone);
   // const implementationAddr = zone.kind.implementation.id.slice(-40);
   // console.log("Judge implementationAddr", implementationAddr);
 
@@ -110,22 +110,22 @@ export default async function update(state, block) {
   );
 
   // Change appearance of bases if there is a match waiting on them
-  mapObj.push(
-    ...getBuildingsByKind(state.world.buildings, "TW Lite Base")
-      .filter((b) => {
-        const matchID = getData(b, getTileMatchKey(b.location.tile.id));
+  // mapObj.push(
+  //   ...getBuildingsByKind(state.world.buildings, "TW Lite Base")
+  //     .filter((b) => {
+  //       const matchID = getData(b, getTileMatchKey(b.location.tile.id));
 
-        return matchID && matchID !== nullBytes32;
-      })
-      .map((b) => {
-        return {
-          type: "building",
-          id: b.id,
-          key: "model",
-          value: "1-1-1", // top-bottom-color. This puts a gun on top and paints it pink
-        };
-      })
-  );
+  //       return matchID && matchID !== nullBytes32;
+  //     })
+  //     .map((b) => {
+  //       return {
+  //         type: "building",
+  //         id: b.id,
+  //         key: "model",
+  //         value: "1-1-1", // top-bottom-color. This puts a gun on top and paints it pink
+  //       };
+  //     })
+  // );
 
   return {
     version: 1,
@@ -334,10 +334,6 @@ function formatTime(timeInMs) {
   let formattedSeconds = String(seconds).padStart(2, "0");
 
   return `${formattedMinutes}:${formattedSeconds}`;
-}
-
-function getTileMatchKey(tileId) {
-  return tileId + "_entityID";
 }
 
 // --- Helper functions

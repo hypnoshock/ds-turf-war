@@ -52,6 +52,14 @@ library LibCombat {
         );
     }
 
+    function setInitState(Game ds, bytes24 buildingInstance, BattalionState[] memory initState) internal {
+        ds.getDispatcher().dispatch(
+            abi.encodeCall(
+                Actions.SET_DATA_ON_BUILDING, (buildingInstance, DATA_INIT_STATE, _encodeInitState(initState))
+            )
+        );
+    }
+
     function addSoldiers(
         Game ds,
         bytes24 buildingInstance,

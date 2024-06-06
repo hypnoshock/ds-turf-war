@@ -10,10 +10,6 @@ library LibUtils {
         return string(abi.encodePacked("team", LibString.toString(uint256(team))));
     }
 
-    function getTileMatchKey(bytes24 tile) internal pure returns (string memory) {
-        return string(abi.encodePacked(LibString.toHexString(uint192(bytes24(tile)), 24), "_entityID"));
-    }
-
     function getTileWinnerKey(bytes24 tile) internal pure returns (string memory) {
         return string(abi.encodePacked(LibString.toHexString(uint192(bytes24(tile)), 24), "_winner"));
     }
@@ -71,5 +67,17 @@ library LibUtils {
     function getTileZone(bytes24 tile) internal pure returns (int16 z) {
         int16[4] memory keys = CompoundKeyDecoder.INT16_ARRAY(tile);
         return (keys[0]);
+    }
+
+    function getTileTeam(State state, bytes24 zoneID, bytes24 tile) internal view returns (Team) {
+        bytes24 winningUnit = bytes24(state.getData(zoneID, getTileWinnerKey(tile)));
+        if (winningUnit != bytes24(0)) {
+            if (LibUtils.isUnitInTeam(state, zoneID, TEAM_A, winningUnit)) {
+                return Team.A;
+            } else {
+                return Team.B;
+            }
+        }
+        return Team.NONE;
     }
 }

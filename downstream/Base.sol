@@ -143,19 +143,27 @@ contract Base is BuildingKind, IBase {
             battalionStates[0].soldierCount == 0 || battalionStates[1].soldierCount == 0, "Base: Battle is not finished"
         );
 
-        LibCombat.resetStartBlock(ds, buildingInstance);
-        // NOTE: Remember to enode state instead of clearing if we decide not to destroy buildings on win
-        LibCombat.resetInitState(ds, buildingInstance);
-
+        bytes24 zone = Node.Zone(LibUtils.getTileZone(tile));
+        Team playerTeam = LibUtils.getUnitTeam(state, zone, actor);
+        Team tileTeam = LibUtils.getTileTeam(state, zone, tile);
         Team winningTeam = battalionStates[0].soldierCount == 0 ? Team.B : Team.A;
 
-        bytes24 zone = Node.Zone(LibUtils.getTileZone(tile));
-        Team team = LibUtils.getUnitTeam(state, zone, actor);
+        // TODO: Either side should be able to end the battle but for that to work, we need to save teams to tiles instead of mobile unit IDs
+        require(playerTeam == winningTeam, "Base: Player is not in the winning team");
 
-        require(team == winningTeam, "Base: Player is not in the winning team");
+        LibCombat.resetStartBlock(ds, buildingInstance);
 
-        IZone zoneImpl = IZone(state.getImplementation(zone));
-        zoneImpl.setAreaWinner(ds, tile, actor, true);
+        if (tileTeam == winningTeam) {
+            // If the defenders won, set the resultant state as init state
+            LibCombat.setInitState(ds, buildingInstance, battalionStates);
+        } else {
+            // Destroy building
+            LibCombat.resetInitState(ds, buildingInstance);
+            IZone zoneImpl = IZone(state.getImplementation(zone));
+            zoneImpl.setAreaWinner(ds, tile, actor, true);
+
+            // Where do the soldiers go?
+        }
     }
 
     function getBattleState(Game ds, bytes24 buildingInstance, uint256 blockNumber)
