@@ -8,3 +8,5 @@ spec:
   items:
     - name: "TW Soldier"
       quantity: 100
+    - name: "TW Person"
+      quantity: 100

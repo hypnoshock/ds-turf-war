@@ -6,8 +6,14 @@ const BLOCK_TIME_SECS = 2;
 const TEAM_A = "team1";
 const TEAM_B = "team2";
 const DATA_BATTLE_START_BLOCK = "battleStartBlock";
+
 const HAMMER_EQUIP_SLOT = 0;
 const SOLDIER_EQUIP_SLOT = 1;
+
+// TODO: Some weirdness where we have a different equip slot for input than output for soldiers
+const SOLDIER_BAG_EQUIP_SLOT = 0;
+const PERSON_BAG_EQUIP_SLOT = 1;
+
 const func = ds;
 const networkEndpoint = ds.config.networkEndpoint;
 const gameContractAddr = getGameContractAddr(ds.config.networkName);
@@ -15,6 +21,11 @@ const gameContractAddr = getGameContractAddr(ds.config.networkName);
 let battleState = {
   battalionState: [],
   isFinished: false,
+};
+
+let personState = {
+  team: 0,
+  count: 0,
 };
 
 function getGameContractAddr(networkName) {
@@ -60,12 +71,9 @@ export default async function update(state, block) {
   // console.log("matchID", matchID);
   // console.log("winner", winner);
   // console.log("battleState", battleState);
+  console.log("personState", personState);
 
   //--  Fetch the latest state
-
-  if (isNewBlock) {
-    fetchBattleState(selectedBuilding, block);
-  }
 
   // players are unit ids
   const { teamAPlayers, teamBPlayers } = getTurfWarsState(state, state.world);
@@ -73,7 +81,12 @@ export default async function update(state, block) {
   const tileWinnerKey = getTileWinnerKey(selectedBuilding.location.tile.id);
   const winnerUnitId = getDataBytes24(state.world, tileWinnerKey);
   const tileTeam = getTeam(teamAPlayers, teamBPlayers, winnerUnitId);
-  const playerTeam = getTeam(teamAPlayers, teamBPlayers, mobileUnit.id);
+  // const playerTeam = getTeam(teamAPlayers, teamBPlayers, mobileUnit.id);
+
+  if (isNewBlock) {
+    fetchBattleState(selectedBuilding, block);
+    fetchPersonState(selectedBuilding, block, tileTeam);
+  }
 
   // The team that has claimed the tile will be on the defence
   const defenders = getSoldierCount(battleState, tileTeam);
@@ -100,12 +113,42 @@ export default async function update(state, block) {
     });
   };
 
+  const addPerson = (amount) => {
+    const [fromEquipSlot, fromItemSlot] = getItemSlotWithBalance(
+      mobileUnit,
+      "TW Person"
+    );
+    const [toEquipSlot, toItemSlot] = [PERSON_BAG_EQUIP_SLOT, 0];
+
+    ds.dispatch(
+      {
+        name: "TRANSFER_ITEM_MOBILE_UNIT",
+        args: [
+          mobileUnit.id,
+          [mobileUnit.id, selectedBuilding.id],
+          [fromEquipSlot, toEquipSlot],
+          [fromItemSlot, toItemSlot],
+          nullBytes24, // Used to make a new bag on the fly
+          amount,
+        ],
+      },
+      {
+        name: "BUILDING_USE",
+        args: [
+          selectedBuilding.id,
+          mobileUnit.id,
+          ds.encodeCall("function addPerson()", [amount]),
+        ],
+      }
+    );
+  };
+
   const addSoldiers = (amount) => {
     const [fromEquipSlot, fromItemSlot] = getItemSlotWithBalance(
       mobileUnit,
       "TW Soldier"
     );
-    const [toEquipSlot, toItemSlot] = [0, 0];
+    const [toEquipSlot, toItemSlot] = [SOLDIER_BAG_EQUIP_SLOT, 0];
 
     ds.dispatch(
       {
@@ -262,6 +305,24 @@ export default async function update(state, block) {
   }
 
   buttons.push({
+    text: "Add 1 person",
+    type: "action",
+    action: () => {
+      addPerson(1);
+    },
+    disabled: false,
+  });
+
+  buttons.push({
+    text: "Add 5 people",
+    type: "action",
+    action: () => {
+      addPerson(5);
+    },
+    disabled: false,
+  });
+
+  buttons.push({
     text: "Add 1 soldier",
     type: "action",
     action: () => {
@@ -357,6 +418,62 @@ function fetchBattleState(building, block) {
           return { teamKey, soldierCount, weapons, defence };
         }),
         isFinished,
+      };
+    });
+}
+
+function fetchPersonState(building, block, teamKey) {
+  const teamEnum = teamKey.replace("team", "");
+
+  const buildingId = building.id;
+  const buildingImplementationAddr =
+    "0x" + building.kind.implementation.id.slice(-40);
+
+  // Battle hasn't started, get initial state from DATA_INIT_STATE
+
+  // else fetch the full state from the contract
+
+  fetch(networkEndpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "eth_call",
+      params: [
+        {
+          to: buildingImplementationAddr,
+          data: ds.encodeCall(
+            "function getPersonStates(address,bytes24,uint256)",
+            [gameContractAddr, buildingId, block]
+          ),
+        },
+        "latest",
+      ],
+      id: 1,
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.error) {
+        console.error("Unable to retrieve person state", data.error);
+        return;
+      }
+
+      if (!data.result) {
+        console.error("No result from person state call");
+        console.log("data: ", data);
+        console.log("endpoint: ", networkEndpoint);
+        return;
+      }
+
+      const [personStates] = ds.abiDecode(["(uint8,uint16)[]"], data.result);
+      const [team, count] = personStates[teamEnum - 1];
+
+      personState = {
+        team,
+        count,
       };
     });
 }

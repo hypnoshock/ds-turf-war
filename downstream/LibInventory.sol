@@ -82,6 +82,26 @@ library LibInventory {
         return itemTotal;
     }
 
+    function getItemBalance(State state, bytes24 entityID, bytes24 itemID, uint8 equipIndex)
+        internal
+        view
+        returns (uint64)
+    {
+        bytes24 unitBag = state.getEquipSlot(entityID, equipIndex);
+        if (unitBag == 0) {
+            return 0;
+        }
+
+        uint64 itemTotal = 0;
+        for (uint8 slotIndex = 0; slotIndex < 4; slotIndex++) {
+            (bytes24 inventoryItem, uint64 inventoryBalance) = state.getItemSlot(unitBag, slotIndex);
+            if (inventoryItem == itemID) {
+                itemTotal += inventoryBalance;
+            }
+        }
+        return itemTotal;
+    }
+
     // Transfers the bag to the tile, burns it and creates a new empty bag in place of the burnt bag
     function burnBagContents(Game ds, bytes24 buildingInstance, uint8 equipSlot) internal {
         State state = ds.getState();

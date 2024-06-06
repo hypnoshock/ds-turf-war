@@ -1,7 +1,7 @@
 kind: Item
 spec:
   name: TW Person
-  icon: 28-62
+  icon: 31-189
   goo:
     red: 10
     green: 10

@@ -35,7 +35,7 @@ struct BattalionState {
 }
 
 // NOTE: If encoding state in one 32 byte slot, we can only have 3 teams
-uint8 constant TEAM_STATE_BIT_LEN = 16 + (8 * NUM_WEAPON_KINDS) + (8 * NUM_DEFENCE_LEVELS);
+uint8 constant BATTALION_STATE_BIT_LEN = 16 + (8 * NUM_WEAPON_KINDS) + (8 * NUM_DEFENCE_LEVELS);
 
 uint256 constant BATTLE_TIMEOUT_BLOCKS = 300; //60 / BLOCK_TIME_SECS;
 
@@ -76,8 +76,6 @@ library LibCombat {
         Team team = LibUtils.getUnitTeam(state, zone, actor);
 
         require(team != Team.NONE, "Base: Player is not in any team");
-
-        // TODO: Check if the player has enough soldiers to add
 
         if (state.getData(buildingInstance, DATA_BATTLE_START_BLOCK) == bytes32(0)) {
             bytes32 initStateEncoded = state.getData(buildingInstance, DATA_INIT_STATE);
@@ -135,7 +133,7 @@ library LibCombat {
         bytes32 encodedInitState = bytes32(initState.length);
         for (uint256 i = 0; i < initState.length; i++) {
             uint256 encodedBattalionState = _encodeBattalionState(initState[i]);
-            encodedInitState |= bytes32(encodedBattalionState << (8 + (TEAM_STATE_BIT_LEN * i)));
+            encodedInitState |= bytes32(encodedBattalionState << (8 + (BATTALION_STATE_BIT_LEN * i)));
         }
         return encodedInitState;
     }
@@ -144,7 +142,7 @@ library LibCombat {
         uint8 length = uint8(uint256(initStateEncoded) & 0xff);
         BattalionState[] memory initState = new BattalionState[](length);
         for (uint8 i = 0; i < length; i++) {
-            uint256 battalionStateEncoded = uint256(initStateEncoded >> (8 + (TEAM_STATE_BIT_LEN * i))); // number of teams
+            uint256 battalionStateEncoded = uint256(initStateEncoded >> (8 + (BATTALION_STATE_BIT_LEN * i)));
             initState[i] = _decodeBattalionState(battalionStateEncoded);
         }
         return initState;

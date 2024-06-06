@@ -9,6 +9,7 @@ import {ZoneKind} from "@ds/ext/ZoneKind.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {LibUtils} from "./LibUtils.sol";
 import {SOLDIER_ITEM} from "./LibCombat.sol";
+import {PERSON_ITEM} from "./LibPerson.sol";
 import {LibTeamState, TeamState} from "./LibTeamState.sol";
 import {IZone, GAME_STATE, HAMMER_ITEM, PRIZE_ITEM, Team, TEAM_A, TEAM_B, DATA_HAS_CLAIMED_PRIZES} from "./IZone.sol";
 import "@ds/utils/LibString.sol";
@@ -211,6 +212,10 @@ contract TurfWarsZone is ZoneKind, IZone {
         _spawnItem(ds.getDispatcher(), tileID, SOLDIER_ITEM, count, 1);
     }
 
+    function spawnPerson(Game ds, bytes24 tileID, uint64 count) public {
+        _spawnItem(ds.getDispatcher(), tileID, PERSON_ITEM, count, 2);
+    }
+
     // TODO: restrict to TurfWarsHQ
     function spawnPrizes(Game ds, bytes24 tileID, uint64 count) public {
         // address hqImpl = ds.getState().getImplementation(TURFWARS_HQ);
@@ -313,12 +318,12 @@ contract TurfWarsZone is ZoneKind, IZone {
             bytes24 buildingTile = state.getFixedLocation(baseBuildings[i]);
             (int16 z, int16 q, int16 r, int16 s) = getTileCoords(buildingTile);
             require(Node.Zone(z) == zoneID, "Base building not in zone");
-            dispatcher.dispatch(abi.encodeCall(Actions.DEV_DESTROY_BUILDING, (z, q, r, s)));
 
-            // TODO: Contract too large
-            // ds.getDispatcher().dispatch(
-            //     abi.encodeCall(Actions.SET_DATA_ON_BUILDING, (baseBuildings[i], "initState", bytes32(0)))
-            // );
+            // TODO: Cannot set data on building directly because it has to be the building that does it
+            // LibCombat.resetInitState(ds, baseBuildings[i]);
+            // LibPerson.resetPersonStates(ds, baseBuildings[i]);
+
+            dispatcher.dispatch(abi.encodeCall(Actions.DEV_DESTROY_BUILDING, (z, q, r, s)));
         }
 
         _setDataOnZone(dispatcher, zoneID, DATA_GAME_STATE, bytes32(uint256(GAME_STATE.NOT_STARTED)));
@@ -379,14 +384,16 @@ contract TurfWarsZone is ZoneKind, IZone {
 
             // revert("Unit cannot move, Game not started");
         } else if (gameState == GAME_STATE.IN_PROGRESS) {
-            bool isUnitInTeam = LibUtils.isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID)
-                || LibUtils.isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
-            require(isUnitInTeam, "Cannot move, unit not on a team");
+            // Uncomment to paint tiles on walk
 
-            // Claim unclaimed tile
-            if (!_hasTileBeenWon(ds, mobileUnitTile, zoneID)) {
-                _setTileWinner(ds, mobileUnitTile, mobileUnitID, zoneID);
-            }
+            // bool isUnitInTeam = LibUtils.isUnitInTeam(state, zoneID, TEAM_A, mobileUnitID)
+            //     || LibUtils.isUnitInTeam(state, zoneID, TEAM_B, mobileUnitID);
+            // require(isUnitInTeam, "Cannot move, unit not on a team");
+
+            // // Claim unclaimed tile
+            // if (!_hasTileBeenWon(ds, mobileUnitTile, zoneID)) {
+            //     _setTileWinner(ds, mobileUnitTile, mobileUnitID, zoneID);
+            // }
         } else if (gameState == GAME_STATE.FINISHED) {
             // NOTE: Contract at size limit. Removing movement restrictions for now
 

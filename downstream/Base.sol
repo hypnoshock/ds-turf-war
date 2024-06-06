@@ -18,11 +18,13 @@ import {
     NUM_DEFENCE_LEVELS,
     SOLDIER_ITEM
 } from "./LibCombat.sol";
+import {LibPerson, PERSON_ITEM, PersonState} from "./LibPerson.sol";
 import {LibInventory} from "./LibInventory.sol";
 
 using Schema for State;
 
-uint8 constant SOLIDER_BAG_EQUIP_SLOT = 0;
+uint8 constant SOLDIER_BAG_EQUIP_SLOT = 0;
+uint8 constant PERSON_BAG_EQUIP_SLOT = 1;
 
 contract Base is BuildingKind, IBase {
     function startBattle() external {}
@@ -31,6 +33,8 @@ contract Base is BuildingKind, IBase {
 
     function addSoldiers(uint8 amount) external {}
     function removeSoldiers(uint64 amount) external {}
+    function addPerson() external {}
+    function removePerson(uint8 amount) external {}
 
     address public owner;
 
@@ -48,6 +52,8 @@ contract Base is BuildingKind, IBase {
             _startBattle(ds, buildingInstance);
         } else if ((bytes4)(payload) == this.claimWin.selector) {
             _claimWin(ds, buildingInstance, actor);
+        } else if ((bytes4)(payload) == this.addPerson.selector) {
+            _addPerson(ds, buildingInstance, actor);
         } else if ((bytes4)(payload) == this.addSoldiers.selector) {
             (uint8 amount) = abi.decode(payload[4:], (uint8));
             _addSoldiers(ds, buildingInstance, actor, amount, [0, 0, 0, 0, 0], [0, 0, 0]);
@@ -77,6 +83,16 @@ contract Base is BuildingKind, IBase {
         LibCombat.startBattle(ds, buildingInstance);
     }
 
+    function _addPerson(Game ds, bytes24 buildingInstance, bytes24 actor) internal {
+        // Check that the player transferred enough men to the building
+        uint64 amount = LibInventory.getItemBalance(ds.getState(), buildingInstance, PERSON_ITEM, PERSON_BAG_EQUIP_SLOT);
+
+        require(amount > 0, "Base: Must transfer at least one person to the building");
+
+        LibInventory.burnBagContents(ds, buildingInstance, PERSON_BAG_EQUIP_SLOT);
+        LibPerson.addPerson(ds, buildingInstance, actor, uint16(amount));
+    }
+
     function _addSoldiers(
         Game ds,
         bytes24 buildingInstance,
@@ -87,11 +103,11 @@ contract Base is BuildingKind, IBase {
     ) internal {
         // Check that the player transferred enough men to the building
         require(
-            LibInventory.hasItem(ds.getState(), buildingInstance, SOLDIER_ITEM, amount, SOLIDER_BAG_EQUIP_SLOT),
+            LibInventory.hasItem(ds.getState(), buildingInstance, SOLDIER_ITEM, amount, SOLDIER_BAG_EQUIP_SLOT),
             "Base: Not enough soldiers transferred to building"
         );
 
-        LibInventory.burnBagContents(ds, buildingInstance, SOLIDER_BAG_EQUIP_SLOT);
+        LibInventory.burnBagContents(ds, buildingInstance, SOLDIER_BAG_EQUIP_SLOT);
 
         // debug
         weapons[1] = amount / 2;
@@ -173,7 +189,10 @@ contract Base is BuildingKind, IBase {
         return LibCombat.getBattleState(ds, buildingInstance, blockNumber);
     }
 
-    // function getPopulation(Game ds, bytes24 buildingInstance) public returns (uint64) {
-    //     return LibCombat.getPopulation(ds, buildingInstance);
-    // }
+    function getPersonStates(Game ds, bytes24 buildingInstance, uint256 blockNumber)
+        public
+        returns (PersonState[] memory)
+    {
+        return LibPerson.getPersonStates(ds, buildingInstance, blockNumber);
+    }
 }
