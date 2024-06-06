@@ -11,6 +11,8 @@ import {LibUtils} from "./LibUtils.sol";
 
 using Schema for State;
 
+bytes24 constant SOLDIER_ITEM = 0x6a7a67f05c334a0b000000010000000a0000000a00000028;
+
 string constant DATA_BATTLE_START_BLOCK = "battleStartBlock";
 string constant DATA_INIT_STATE = "initState";
 

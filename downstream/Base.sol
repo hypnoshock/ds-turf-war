@@ -10,9 +10,19 @@ import {LibString} from "./LibString.sol";
 import {LibUtils} from "./LibUtils.sol";
 import {IZone, GAME_STATE, DATA_SELECTED_LEVEL, Team} from "./IZone.sol";
 import {IBase} from "./IBase.sol";
-import {LibCombat, BattalionState, DATA_INIT_STATE, NUM_WEAPON_KINDS, NUM_DEFENCE_LEVELS} from "./LibCombat.sol";
+import {
+    LibCombat,
+    BattalionState,
+    DATA_INIT_STATE,
+    NUM_WEAPON_KINDS,
+    NUM_DEFENCE_LEVELS,
+    SOLDIER_ITEM
+} from "./LibCombat.sol";
+import {LibInventory} from "./LibInventory.sol";
 
 using Schema for State;
+
+uint8 constant SOLIDER_BAG_EQUIP_SLOT = 0;
 
 contract Base is BuildingKind, IBase {
     function startBattle() external {}
@@ -52,6 +62,10 @@ contract Base is BuildingKind, IBase {
         // NOTE: This check can be deleted if we go over the contract size limit. Just check in frontend and don't worry about cheating
         (BattalionState[] memory battalionStates, /*bool isFinished*/ ) =
             LibCombat.getBattleState(ds, buildingInstance, block.number);
+
+        // TODO: Battle can be started if attackers are > 0
+        // Get tile team
+        // If at least one team that isn't the tile team has soldiers, start battle
         uint8 readyTeams = 0;
         for (uint8 i = 0; i < battalionStates.length; i++) {
             if (battalionStates[i].soldierCount > 0) {
@@ -71,6 +85,14 @@ contract Base is BuildingKind, IBase {
         uint8[NUM_WEAPON_KINDS] memory weapons,
         uint8[NUM_DEFENCE_LEVELS] memory defence
     ) internal {
+        // Check that the player transferred enough men to the building
+        require(
+            LibInventory.hasItem(ds.getState(), buildingInstance, SOLDIER_ITEM, amount, SOLIDER_BAG_EQUIP_SLOT),
+            "Base: Not enough soldiers transferred to building"
+        );
+
+        LibInventory.burnBagContents(ds, buildingInstance, SOLIDER_BAG_EQUIP_SLOT);
+
         // debug
         weapons[1] = amount / 2;
         defence[1] = amount / 2;

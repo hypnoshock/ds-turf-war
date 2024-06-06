@@ -28,4 +28,5 @@ interface IZone {
     function getGameState(State state, bytes24 zoneID) external view returns (GAME_STATE);
     function spawnPrizes(Game ds, bytes24 tileID, uint64 count) external;
     function setHasClaimedPrizes(Game ds, bytes24 zoneID) external;
+    function burnTileBag(Game ds, bytes24 tile, bytes24 bagID, uint8 equipSlot) external;
 }

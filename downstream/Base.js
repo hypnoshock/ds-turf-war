@@ -99,11 +99,33 @@ export default async function update(state, block) {
   };
 
   const addSoldiers = (amount) => {
-    const payload = ds.encodeCall("function addSoldiers(uint8)", [amount]);
-    ds.dispatch({
-      name: "BUILDING_USE",
-      args: [selectedBuilding.id, mobileUnit.id, payload],
-    });
+    const [fromEquipSlot, fromItemSlot] = getItemSlotWithBalance(
+      mobileUnit,
+      "TW Soldier"
+    );
+    const [toEquipSlot, toItemSlot] = [0, 0];
+
+    ds.dispatch(
+      {
+        name: "TRANSFER_ITEM_MOBILE_UNIT",
+        args: [
+          mobileUnit.id,
+          [mobileUnit.id, selectedBuilding.id],
+          [fromEquipSlot, toEquipSlot],
+          [fromItemSlot, toItemSlot],
+          nullBytes24, // Used to make a new bag on the fly
+          amount,
+        ],
+      },
+      {
+        name: "BUILDING_USE",
+        args: [
+          selectedBuilding.id,
+          mobileUnit.id,
+          ds.encodeCall("function addSoldiers(uint8)", [amount]),
+        ],
+      }
+    );
   };
 
   const claimWin = () => {
@@ -433,6 +455,24 @@ function getCompatibleOrEmptySlot(mobileUnit, itemName, quantity = 1) {
   }
 
   throw "No compatible or empty slot found";
+}
+
+function getItemSlotWithBalance(mobileUnit, itemName, quantity = 1) {
+  // First try and find a slot that already has the item
+  for (let bag of mobileUnit.bags) {
+    for (let slot of bag.slots) {
+      if (slot.item.name?.value === itemName && slot.balance >= quantity) {
+        console.log(
+          "Found item in Unit's inventory",
+          bag.equipee.key,
+          slot.key
+        );
+        return [bag.equipee.key, slot.key];
+      }
+    }
+  }
+
+  throw "item not found in units inventory. itemName: " + itemName;
 }
 
 // -- Match Data

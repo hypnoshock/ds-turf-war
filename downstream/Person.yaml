@@ -1,0 +1,9 @@
+kind: Item
+spec:
+  name: TW Person
+  icon: 28-62
+  goo:
+    red: 10
+    green: 10
+    blue: 40
+  stackable: true

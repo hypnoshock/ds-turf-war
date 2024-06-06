@@ -339,6 +339,13 @@ contract TurfWarsZone is ZoneKind, IZone {
         _setDataOnZone(dispatcher, zoneID, LibUtils.getTeamStateKey(Team.B), bytes32(0));
     }
 
+    function burnTileBag(Game ds, bytes24 tile, bytes24 bagID, uint8 equipSlot) public {
+        // NOTE: The empty 'slotContents' array is due to the DEV_DESTROY_BAG action using the length of the array to determine the number of slots to destroy. MAD!!
+        ds.getDispatcher().dispatch(
+            abi.encodeCall(Actions.DEV_DESTROY_BAG, (bagID, address(0), tile, equipSlot, new bytes24[](4)))
+        );
+    }
+
     // -- Hooks
 
     function onUnitArrive(Game ds, bytes24 zoneID, bytes24 mobileUnitID) external override {
