@@ -12,6 +12,8 @@ import {SOLDIER_ITEM} from "./LibCombat.sol";
 import {PERSON_ITEM} from "./LibPerson.sol";
 import {LibTeamState, TeamState} from "./LibTeamState.sol";
 import {IZone, GAME_STATE, HAMMER_ITEM, PRIZE_ITEM, Team, TEAM_A, TEAM_B, DATA_HAS_CLAIMED_PRIZES} from "./IZone.sol";
+import {BASE_BUILDING_KIND} from "./IBase.sol";
+
 import "@ds/utils/LibString.sol";
 
 using Schema for State;
@@ -35,6 +37,8 @@ contract TurfWarsZone is ZoneKind, IZone {
     string constant DATA_GAME_DURATION_BLOCKS = "gameDurationBlocks";
     string constant DATA_START_BLOCK = "startBlock";
     string constant DATA_END_BLOCK = "endBlock";
+
+    bytes24 constant RESEARCH_CENTRE_BUILDING_KIND = 0xbe92755c00000000000000006070acea0000000000000004;
 
     function use(Game ds, bytes24 zoneID, bytes24 mobileUnitID, bytes calldata payload) public override {
         State state = ds.getState();
@@ -345,9 +349,9 @@ contract TurfWarsZone is ZoneKind, IZone {
 
     // -- Hooks
 
-    function onUnitArrive(Game ds, bytes24 zoneID, bytes24 mobileUnitID) external override {
+    function onUnitArrive(Game ds, bytes24 zoneID, bytes24 /*mobileUnitID*/ ) external override {
         State state = ds.getState();
-        bytes24 mobileUnitTile = state.getCurrentLocation(mobileUnitID, uint64(block.number));
+        // bytes24 mobileUnitTile = state.getCurrentLocation(mobileUnitID, uint64(block.number));
         // (int16 z,,,) = getTileCoords(mobileUnitTile);
 
         GAME_STATE gameState = getGameState(state, zoneID);
@@ -422,9 +426,6 @@ contract TurfWarsZone is ZoneKind, IZone {
         revert("Combat not supported in this zone");
     }
 
-    // NOTE: Contract close to size limit. This can get dropped if we need more space. Below is ~500bytes
-    bytes24 constant BASE_BUILDING = 0xbe92755c0000000000000000a9c1e4010000000000000004;
-
     function onContructBuilding(Game ds, bytes24 zoneID, bytes24 mobileUnitID, bytes24 buildingInstance)
         external
         override
@@ -433,9 +434,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         require(getGameState(state, zoneID) == GAME_STATE.IN_PROGRESS, "Cannot build until game starts");
         bytes24 buildingKind = state.getBuildingKind(buildingInstance);
 
-        // require(buildingKind == BASE_BUILDING, "Only base buildings can be constructed in this zone");
-
-        if (buildingKind == BASE_BUILDING) {
+        if (buildingKind == BASE_BUILDING_KIND) {
             // Team can only directly build one base
             Team team = LibUtils.getUnitTeam(state, zoneID, mobileUnitID);
             TeamState memory teamState =
@@ -451,7 +450,22 @@ contract TurfWarsZone is ZoneKind, IZone {
                 LibUtils.getTeamStateKey(team),
                 bytes32(LibTeamState.encodeTeamState(teamState))
             );
+
+            // Set 10 starter people on building
+
+            return;
+        } else if (buildingKind == RESEARCH_CENTRE_BUILDING_KIND) {
+            // Can only build on your own team's tiles
+            Team team = LibUtils.getUnitTeam(state, zoneID, mobileUnitID);
+            require(
+                team == LibUtils.getTileTeam(state, zoneID, state.getFixedLocation(buildingInstance)),
+                "Can only build on your own team's tiles"
+            );
+
+            return;
         }
+
+        revert("Invalid building kind for this zone");
     }
 
     // -- Helpers

@@ -11,7 +11,6 @@ const HAMMER_SPAWN_EQUIP_SLOT = 0;
 const SOLDIER_SPAWN_EQUIP_SLOT = 1;
 const PERSON_SPAWN_EQUIP_SLOT = 2;
 
-// TODO: Some weirdness where we have a different equip slot for input than output for soldiers
 const SOLDIER_DEPOSIT_BAG_EQUIP_SLOT = 0;
 const PERSON_DEPOSIT_BAG_EQUIP_SLOT = 1;
 

@@ -1,0 +1,15 @@
+---
+kind: BuildingKind
+spec:
+  category: custom
+  name: TW Research Centre
+  description: Put people on this building and choose which tech to start researching
+  model: 03-03
+  color: 5
+  contract:
+    file: ./ResearchCentre.sol
+  plugin:
+    file: ./ResearchCentre.js
+  materials:
+    - name: TW Hammer
+      quantity: 1

@@ -83,7 +83,6 @@ library LibPerson {
 
         require(team != Team.NONE, "Base: Player is not in any team");
 
-        bytes32 encodedStates = state.getData(buildingInstance, DATA_PERSON_STATES);
         PersonState[] memory personStates = getPersonStates(ds, buildingInstance, block.number);
 
         require(personStates[uint8(team) - 1].count >= amount, "Base: Not enough people to remove");
@@ -121,7 +120,7 @@ library LibPerson {
             return personStates;
         }
 
-        uint256 elapsedBlocks = (block.number - updateBlock) / 2; // We'll update the population every 2 blocks
+        uint256 elapsedBlocks = (blockNumber - updateBlock) / 2; // We'll update the population every 2 blocks
         if (elapsedBlocks > MAX_ELAPSED_BLOCKS) {
             elapsedBlocks = MAX_ELAPSED_BLOCKS;
         }
