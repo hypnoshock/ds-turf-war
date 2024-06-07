@@ -7,12 +7,13 @@ const TEAM_A = "team1";
 const TEAM_B = "team2";
 const DATA_BATTLE_START_BLOCK = "battleStartBlock";
 
-const HAMMER_EQUIP_SLOT = 0;
-const SOLDIER_EQUIP_SLOT = 1;
+const HAMMER_SPAWN_EQUIP_SLOT = 0;
+const SOLDIER_SPAWN_EQUIP_SLOT = 1;
+const PERSON_SPAWN_EQUIP_SLOT = 2;
 
 // TODO: Some weirdness where we have a different equip slot for input than output for soldiers
-const SOLDIER_BAG_EQUIP_SLOT = 0;
-const PERSON_BAG_EQUIP_SLOT = 1;
+const SOLDIER_DEPOSIT_BAG_EQUIP_SLOT = 0;
+const PERSON_DEPOSIT_BAG_EQUIP_SLOT = 1;
 
 const func = ds;
 const networkEndpoint = ds.config.networkEndpoint;
@@ -71,7 +72,7 @@ export default async function update(state, block) {
   // console.log("matchID", matchID);
   // console.log("winner", winner);
   // console.log("battleState", battleState);
-  console.log("personState", personState);
+  // console.log("personState", personState);
 
   //--  Fetch the latest state
 
@@ -118,7 +119,7 @@ export default async function update(state, block) {
       mobileUnit,
       "TW Person"
     );
-    const [toEquipSlot, toItemSlot] = [PERSON_BAG_EQUIP_SLOT, 0];
+    const [toEquipSlot, toItemSlot] = [PERSON_DEPOSIT_BAG_EQUIP_SLOT, 0];
 
     ds.dispatch(
       {
@@ -143,12 +144,64 @@ export default async function update(state, block) {
     );
   };
 
+  const removePerson = (amount) => {
+    const [fromEquipSlot, fromItemSlot] = [PERSON_SPAWN_EQUIP_SLOT, 0];
+    const [toEquipSlot, toItemSlot] = getCompatibleOrEmptySlot(
+      mobileUnit,
+      "TW Person",
+      amount
+    );
+
+    // The temp bag person items get spawned into
+    const spawnBagID = generateDevBagId(
+      mobileUnit.nextLocation.tile,
+      PERSON_SPAWN_EQUIP_SLOT
+    );
+
+    ds.dispatch(
+      {
+        name: "BUILDING_USE",
+        args: [
+          selectedBuilding.id,
+          mobileUnit.id,
+          ds.encodeCall("function removePerson(uint16)", [amount]),
+        ],
+      },
+      {
+        name: "TRANSFER_ITEM_MOBILE_UNIT",
+        args: [
+          mobileUnit.id,
+          [mobileUnit.nextLocation.tile.id, mobileUnit.id], // from entity, to entity
+          [fromEquipSlot, toEquipSlot],
+          [fromItemSlot, toItemSlot],
+          nullBytes24, // Used to make a new bag on the fly
+          amount,
+        ],
+      },
+      {
+        name: "ZONE_USE",
+        args: [
+          mobileUnit.id,
+          ds.encodeCall(
+            "function destroyTileBag(bytes24,bytes24,uint8,bytes24[])",
+            [
+              mobileUnit.nextLocation.tile.id, // Tile ID
+              spawnBagID,
+              fromEquipSlot,
+              [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
+            ]
+          ),
+        ],
+      }
+    );
+  };
+
   const addSoldiers = (amount) => {
     const [fromEquipSlot, fromItemSlot] = getItemSlotWithBalance(
       mobileUnit,
       "TW Soldier"
     );
-    const [toEquipSlot, toItemSlot] = [SOLDIER_BAG_EQUIP_SLOT, 0];
+    const [toEquipSlot, toItemSlot] = [SOLDIER_DEPOSIT_BAG_EQUIP_SLOT, 0];
 
     ds.dispatch(
       {
@@ -174,7 +227,6 @@ export default async function update(state, block) {
   };
 
   const claimWin = () => {
-    const payload = ds.encodeCall("function claimWin()", []);
     const [toHammerEquipSlot, toHammerItemSlot] = getCompatibleOrEmptySlot(
       mobileUnit,
       "TW Hammer",
@@ -189,7 +241,11 @@ export default async function update(state, block) {
     const actions = [
       {
         name: "BUILDING_USE",
-        args: [selectedBuilding.id, mobileUnit.id, payload],
+        args: [
+          selectedBuilding.id,
+          mobileUnit.id,
+          ds.encodeCall("function claimWin()", []),
+        ],
       },
     ];
 
@@ -198,11 +254,11 @@ export default async function update(state, block) {
     if (attackersWin) {
       const hammerBagID = generateDevBagId(
         selectedBuilding.location.tile,
-        HAMMER_EQUIP_SLOT
+        HAMMER_SPAWN_EQUIP_SLOT
       );
       const soldierBagID = generateDevBagId(
         selectedBuilding.location.tile,
-        SOLDIER_EQUIP_SLOT
+        SOLDIER_SPAWN_EQUIP_SLOT
       );
       actions.push(
         {
@@ -210,7 +266,7 @@ export default async function update(state, block) {
           args: [
             mobileUnit.id,
             [selectedBuilding.location.tile.id, mobileUnit.id],
-            [HAMMER_EQUIP_SLOT, toHammerEquipSlot],
+            [HAMMER_SPAWN_EQUIP_SLOT, toHammerEquipSlot],
             [0, toHammerItemSlot],
             nullBytes24,
             1, // Claim hammer
@@ -221,7 +277,7 @@ export default async function update(state, block) {
           args: [
             mobileUnit.id,
             [selectedBuilding.location.tile.id, mobileUnit.id],
-            [SOLDIER_EQUIP_SLOT, toSoldierEquipSlot],
+            [SOLDIER_SPAWN_EQUIP_SLOT, toSoldierEquipSlot],
             [0, toSoldierItemSlot],
             nullBytes24,
             attackers, // Claim soldiers
@@ -233,10 +289,11 @@ export default async function update(state, block) {
           args: [
             mobileUnit.id,
             ds.encodeCall(
-              "function destroyTileBag(bytes24,bytes24,bytes24[])",
+              "function destroyTileBag(bytes24,bytes24,uint8,bytes24[])",
               [
                 selectedBuilding.location.tile.id,
                 hammerBagID,
+                HAMMER_SPAWN_EQUIP_SLOT,
                 [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
               ]
             ),
@@ -247,10 +304,11 @@ export default async function update(state, block) {
           args: [
             mobileUnit.id,
             ds.encodeCall(
-              "function destroyTileBag(bytes24,bytes24,bytes24[])",
+              "function destroyTileBag(bytes24,bytes24,uint8,bytes24[])",
               [
                 selectedBuilding.location.tile.id,
                 soldierBagID,
+                SOLDIER_SPAWN_EQUIP_SLOT,
                 [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
               ]
             ),
@@ -268,6 +326,7 @@ export default async function update(state, block) {
   );
 
   let html = `
+    <p>population: ${personState.count}</p>
     <p>defenders: ${defenders}</p>
     <p>attackers: ${attackers}</p>
     <p>battle finished: ${battleState.isFinished}</p>
@@ -318,6 +377,24 @@ export default async function update(state, block) {
     type: "action",
     action: () => {
       addPerson(5);
+    },
+    disabled: false,
+  });
+
+  buttons.push({
+    text: "Remove 1 person",
+    type: "action",
+    action: () => {
+      removePerson(1);
+    },
+    disabled: false,
+  });
+
+  buttons.push({
+    text: "Remove 5 people",
+    type: "action",
+    action: () => {
+      removePerson(5);
     },
     disabled: false,
   });

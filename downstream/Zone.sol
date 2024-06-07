@@ -21,7 +21,7 @@ contract TurfWarsZone is ZoneKind, IZone {
     function setReady() external {}
     function unsetReady() external {}
     function reset(bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings) external {}
-    function destroyTileBag(bytes24 tileID, bytes24 bagID, bytes24[] memory slotContents) external {}
+    function destroyTileBag(bytes24 tileID, bytes24 bagID, uint8 equipSlot, bytes24[] memory slotContents) external {}
     // function claim() external {}
 
     int16 constant DEFAULT_CLAIM_RANGE = 2;
@@ -50,10 +50,10 @@ contract TurfWarsZone is ZoneKind, IZone {
                 abi.decode(payload[4:], (bytes24[], bytes24[]));
             _reset(ds, state, zoneID, dirtyTiles, baseBuildings);
         } else if ((bytes4)(payload) == this.destroyTileBag.selector) {
-            (bytes24 tileID, bytes24 bagID, bytes24[] memory slotContents) =
-                abi.decode(payload[4:], (bytes24, bytes24, bytes24[]));
+            (bytes24 tileID, bytes24 bagID, uint8 equipSlot, bytes24[] memory slotContents) =
+                abi.decode(payload[4:], (bytes24, bytes24, uint8, bytes24[]));
             ds.getDispatcher().dispatch(
-                abi.encodeCall(Actions.DEV_DESTROY_BAG, (bagID, address(0), tileID, uint8(0), slotContents))
+                abi.encodeCall(Actions.DEV_DESTROY_BAG, (bagID, address(0), tileID, equipSlot, slotContents))
             );
         } else {
             revert("TurfWarsZone: Invalid function signature");

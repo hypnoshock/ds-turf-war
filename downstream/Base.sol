@@ -34,7 +34,7 @@ contract Base is BuildingKind, IBase {
     function addSoldiers(uint8 amount) external {}
     function removeSoldiers(uint64 amount) external {}
     function addPerson() external {}
-    function removePerson(uint8 amount) external {}
+    function removePerson(uint16 amount) external {}
 
     address public owner;
 
@@ -54,6 +54,9 @@ contract Base is BuildingKind, IBase {
             _claimWin(ds, buildingInstance, actor);
         } else if ((bytes4)(payload) == this.addPerson.selector) {
             _addPerson(ds, buildingInstance, actor);
+        } else if ((bytes4)(payload) == this.removePerson.selector) {
+            (uint8 amount) = abi.decode(payload[4:], (uint8));
+            _removePerson(ds, buildingInstance, actor, amount);
         } else if ((bytes4)(payload) == this.addSoldiers.selector) {
             (uint8 amount) = abi.decode(payload[4:], (uint8));
             _addSoldiers(ds, buildingInstance, actor, amount, [0, 0, 0, 0, 0], [0, 0, 0]);
@@ -91,6 +94,19 @@ contract Base is BuildingKind, IBase {
 
         LibInventory.burnBagContents(ds, buildingInstance, PERSON_BAG_EQUIP_SLOT);
         LibPerson.addPerson(ds, buildingInstance, actor, uint16(amount));
+    }
+
+    function _removePerson(Game ds, bytes24 buildingInstance, bytes24 actor, uint16 amount) internal {
+        State state = ds.getState();
+
+        require(amount <= 100, "Base: You can only remove up to 100 people at a time");
+
+        LibPerson.removePerson(ds, buildingInstance, actor, amount);
+
+        bytes24 mobileUnitTile = state.getCurrentLocation(actor, uint64(block.number));
+        bytes24 zone = Node.Zone(LibUtils.getTileZone(mobileUnitTile));
+        IZone zoneImpl = IZone(state.getImplementation(zone));
+        zoneImpl.spawnPerson(ds, mobileUnitTile, amount);
     }
 
     function _addSoldiers(

@@ -106,11 +106,15 @@ export default async function update(state, block) {
         name: "ZONE_USE",
         args: [
           mobileUnit.id,
-          ds.encodeCall("function destroyTileBag(bytes24,bytes24,bytes24[])", [
-            selectedBuilding.location.tile.id,
-            generateDevBagId(selectedBuilding.location.tile),
-            [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
-          ]),
+          ds.encodeCall(
+            "function destroyTileBag(bytes24,bytes24,uint8,bytes24[])",
+            [
+              selectedBuilding.location.tile.id,
+              generateDevBagId(selectedBuilding.location.tile),
+              0, // equipSlot
+              [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
+            ]
+          ),
         ],
       }
     );
