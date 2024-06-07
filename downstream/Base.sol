@@ -198,6 +198,17 @@ contract Base is BuildingKind, IBase {
         }
     }
 
+    function zoneAddPerson(Game ds, bytes24 mobileUnitID, bytes24 buildingInstance, uint16 amount) public {
+        State state = ds.getState();
+
+        // Only callable from zone contract
+        bytes24 zone = Node.Zone(LibUtils.getTileZone(state.getFixedLocation(buildingInstance)));
+        IZone zoneImpl = IZone(state.getImplementation(zone));
+        require(msg.sender == address(zoneImpl), "Base: Only zone contract can call this function");
+
+        LibPerson.addPerson(ds, buildingInstance, mobileUnitID, amount);
+    }
+
     function getBattleState(Game ds, bytes24 buildingInstance, uint256 blockNumber)
         public
         returns (BattalionState[] memory battalionStates, bool isFinished)

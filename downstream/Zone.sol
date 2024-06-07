@@ -12,7 +12,7 @@ import {SOLDIER_ITEM} from "./LibCombat.sol";
 import {PERSON_ITEM} from "./LibPerson.sol";
 import {LibTeamState, TeamState} from "./LibTeamState.sol";
 import {IZone, GAME_STATE, HAMMER_ITEM, PRIZE_ITEM, Team, TEAM_A, TEAM_B, DATA_HAS_CLAIMED_PRIZES} from "./IZone.sol";
-import {BASE_BUILDING_KIND} from "./IBase.sol";
+import {IBase, BASE_BUILDING_KIND} from "./IBase.sol";
 
 import "@ds/utils/LibString.sol";
 
@@ -29,6 +29,7 @@ contract TurfWarsZone is ZoneKind, IZone {
     int16 constant DEFAULT_CLAIM_RANGE = 2;
     uint64 constant DEFAULT_GAME_DURATION_BLOCKS = 120 * 60 / BLOCK_TIME_SECS; // (15 * 60)
     uint64 constant DEFAULT_HAMMER_COUNT = 10;
+    uint16 constant DEFAULT_NUM_STARTER_PEOPLE = 10;
 
     // Data keys
     string constant DATA_GAME_STATE = "gameState";
@@ -451,7 +452,9 @@ contract TurfWarsZone is ZoneKind, IZone {
                 bytes32(LibTeamState.encodeTeamState(teamState))
             );
 
-            // Set 10 starter people on building
+            // Set starter people on building
+            IBase baseImpl = IBase(state.getImplementation(BASE_BUILDING_KIND));
+            baseImpl.zoneAddPerson(ds, mobileUnitID, buildingInstance, DEFAULT_NUM_STARTER_PEOPLE);
 
             return;
         } else if (buildingKind == RESEARCH_CENTRE_BUILDING_KIND) {
