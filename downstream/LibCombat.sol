@@ -18,10 +18,9 @@ string constant DATA_INIT_STATE = "initState";
 
 enum Weapon {
     None,
-    Rock,
     Slingshot,
-    Spear,
-    Longbow
+    Longbow,
+    Gun
 }
 
 uint8 constant NUM_WEAPON_KINDS = 5;

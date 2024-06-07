@@ -6,10 +6,10 @@ import {State} from "cog/IState.sol";
 import {Schema, Node} from "@ds/schema/Schema.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {IZone, GAME_STATE, Team} from "./IZone.sol";
-import {ABDKMath64x64} from "./libs/ABDKMath64x64.sol";
 import {BASE_BUILDING_KIND} from "./IBase.sol";
-
 import {LibUtils} from "./LibUtils.sol";
+
+import {ABDKMath64x64} from "./libs/ABDKMath64x64.sol";
 
 using Schema for State;
 

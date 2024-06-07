@@ -9,6 +9,8 @@ const GAME_STATE_NOT_STARTED = 0;
 const GAME_STATE_IN_PROGRESS = 1;
 const GAME_STATE_FINISHED = 2;
 
+const SLINGSHOT = 1;
+
 // const HAMMER_SPAWN_EQUIP_SLOT = 0;
 // const SOLDIER_SPAWN_EQUIP_SLOT = 1;
 const PERSON_SPAWN_EQUIP_SLOT = 2;
@@ -24,6 +26,10 @@ let isNewBlock = false;
 let personState = {
   team: 0,
   count: 0,
+};
+let researchState = {
+  researchedTech: 0,
+  percent: 0,
 };
 
 function getGameContractAddr(networkName) {
@@ -50,6 +56,8 @@ export default async function update(state, block) {
     };
   }
 
+  // console.log(selectedBuilding);
+
   const { teamAPlayers, teamBPlayers } = getTurfWarsState(
     state,
     block,
@@ -68,6 +76,7 @@ export default async function update(state, block) {
 
   if (isNewBlock) {
     fetchPersonState(selectedBuilding, block, tileTeam);
+    fetchResearchState(selectedBuilding);
   }
 
   const addPerson = (amount) => {
@@ -152,9 +161,28 @@ export default async function update(state, block) {
     );
   };
 
+  const setResearch = (weapon) => {
+    ds.dispatch({
+      name: "BUILDING_USE",
+      args: [
+        selectedBuilding.id,
+        mobileUnit.id,
+        ds.encodeCall("function setResearchedTech(uint8)", [weapon]),
+      ],
+    });
+  };
+
   let html = `
     <p>scientists: ${personState.count}</p>
   `;
+
+  if (researchState.researchedTech != 0) {
+    html += `
+      <p>researching: ${getWeaponName(researchState.researchedTech)}</p>
+      <p>progress: ${researchState.percent}%</p>
+    `;
+  }
+
   const buttons = [];
 
   buttons.push({
@@ -189,6 +217,15 @@ export default async function update(state, block) {
     type: "action",
     action: () => {
       removePerson(5);
+    },
+    disabled: false,
+  });
+
+  buttons.push({
+    text: "Research Slingshot",
+    type: "action",
+    action: () => {
+      setResearch(SLINGSHOT);
     },
     disabled: false,
   });
@@ -344,7 +381,73 @@ function getTileWinnerKey(tileId) {
   return tileId + "_winner";
 }
 
+function getWeaponName(weaponEnum) {
+  switch (weaponEnum) {
+    case SLINGSHOT:
+      return "Sling Shot";
+    default:
+      return "Unknown";
+  }
+}
+
 // ---- STATE ----
+
+function fetchResearchState(building) {
+  const buildingId = building.id;
+  const buildingImplementationAddr =
+    "0x" + building.kind.implementation.id.slice(-40);
+
+  // Battle hasn't started, get initial state from DATA_INIT_STATE
+
+  // else fetch the full state from the contract
+
+  fetch(networkEndpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "eth_call",
+      params: [
+        {
+          to: buildingImplementationAddr,
+          data: ds.encodeCall("function getResearchState(address,bytes24)", [
+            gameContractAddr,
+            buildingId,
+          ]),
+        },
+        "latest",
+      ],
+      id: 1,
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.error) {
+        console.error("Unable to retrieve research state", data.error);
+        return;
+      }
+
+      if (!data.result) {
+        console.error("No result from research state call");
+        console.log("data: ", data);
+        console.log("endpoint: ", networkEndpoint);
+        return;
+      }
+
+      const [researchStateRes] = ds.abiDecode(
+        ["(uint256,int128)"],
+        data.result
+      );
+      const [researchedTech, percent] = researchStateRes;
+
+      researchState = {
+        researchedTech: Number(researchedTech),
+        percent: Number(percent >> 64n),
+      };
+    });
+}
 
 function fetchPersonState(building, block, teamKey) {
   const teamEnum = teamKey.replace("team", "");
