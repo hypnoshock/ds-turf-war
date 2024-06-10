@@ -20,7 +20,9 @@ import {
     TEAM_A,
     TEAM_B,
     DATA_HAS_CLAIMED_PRIZES,
-    SLINGSHOT_FACTORY_BUILDING_KIND
+    SLINGSHOT_FACTORY_BUILDING_KIND,
+    LONGBOW_FACTORY_BUILDING_KIND,
+    GUN_FACTORY_BUILDING_KIND
 } from "./IZone.sol";
 import {IBase, BASE_BUILDING_KIND} from "./IBase.sol";
 
@@ -493,7 +495,10 @@ contract TurfWarsZone is ZoneKind, IZone {
             );
 
             return;
-        } else if (buildingKind == SLINGSHOT_FACTORY_BUILDING_KIND) {
+        } else if (
+            buildingKind == SLINGSHOT_FACTORY_BUILDING_KIND || buildingKind == LONGBOW_FACTORY_BUILDING_KIND
+                || buildingKind == GUN_FACTORY_BUILDING_KIND
+        ) {
             return;
         }
 

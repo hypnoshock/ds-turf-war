@@ -14,6 +14,8 @@ using Schema for State;
 bytes24 constant SOLDIER_ITEM = 0x6a7a67f05c334a0b000000010000000a0000000a00000028;
 
 bytes24 constant SLINGSHOT_ITEM = 0x6a7a67f05d101e920000000100000005000000050000000a;
+bytes24 constant LONGBOW_ITEM = 0x6a7a67f067031d01000000010000000a0000000500000005;
+bytes24 constant GUN_ITEM = 0x6a7a67f03e31669a00000001000000050000000a00000005;
 
 string constant DATA_BATTLE_START_BLOCK = "battleStartBlock";
 string constant DATA_INIT_STATE = "initState";
@@ -247,7 +249,7 @@ library LibCombat {
         return (battalionStates, isFinished);
     }
 
-    function _attack(BattalionState memory attacker, BattalionState memory defender, uint256 rndSeed) internal {
+    function _attack(BattalionState memory attacker, BattalionState memory defender, uint256 rndSeed) internal pure {
         uint8 rndSoldier = (uint8((rndSeed >> 8) & 0xff) % attacker.soldierCount);
         Weapon attackerWeapon;
         uint16 weaponCount = 0;
@@ -366,6 +368,10 @@ library LibCombat {
     function getWeaponKind(bytes24 weapon) internal pure returns (Weapon) {
         if (weapon == SLINGSHOT_ITEM) {
             return Weapon.Slingshot;
+        } else if (weapon == LONGBOW_ITEM) {
+            return Weapon.Longbow;
+        } else if (weapon == GUN_ITEM) {
+            return Weapon.Gun;
         }
 
         return Weapon.None;

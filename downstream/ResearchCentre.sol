@@ -49,7 +49,7 @@ contract TurfWarsResearchCentre is BuildingKind {
     }
 
     function _setResearchedTech(Game ds, bytes24 buildingInstance, Weapon researchedTech) internal {
-        require(researchedTech != Weapon.None, "Base: Must select a valid tech to research");
+        require(researchedTech != Weapon.None, "ResearchCentre: Must select a valid tech to research");
 
         // Check that the player transferred
         _setData(ds, buildingInstance, DATA_RESEARCHED_TECH, uint256(researchedTech));
@@ -63,7 +63,7 @@ contract TurfWarsResearchCentre is BuildingKind {
         // Check that the player transferred enough men to the building
         uint64 amount = LibInventory.getItemBalance(ds.getState(), buildingInstance, PERSON_ITEM, PERSON_BAG_EQUIP_SLOT);
 
-        require(amount > 0, "Base: Must transfer at least one person to the building");
+        require(amount > 0, "ResearchCentre: Must transfer at least one person to the building");
 
         LibInventory.burnBagContents(ds, buildingInstance, PERSON_BAG_EQUIP_SLOT);
         LibPerson.addPerson(ds, buildingInstance, actor, uint16(amount));
@@ -74,7 +74,7 @@ contract TurfWarsResearchCentre is BuildingKind {
 
         State state = ds.getState();
 
-        require(amount <= 100, "Base: You can only remove up to 100 people at a time");
+        require(amount <= 100, "ResearchCentre: You can only remove up to 100 people at a time");
 
         LibPerson.removePerson(ds, buildingInstance, actor, amount);
 

@@ -1,0 +1,40 @@
+---
+kind: BuildingKind
+spec:
+  category: factory
+  name: TW Longbow Factory
+  description: Make Longbows here
+  model: 05-05
+  color: 3
+  contract:
+    file: ./LongBowFactory.sol
+  plugin:
+    file: ./LongBowFactory.js
+  materials:
+    - name: Red Goo
+      quantity: 10
+    - name: Green Goo
+      quantity: 10
+    - name: Blue Goo
+      quantity: 10
+  inputs:
+    - name: Red Goo
+      quantity: 10
+    - name: Green Goo
+      quantity: 20
+    - name: Blue Goo
+      quantity: 10
+  outputs:
+    - name: TW Longbow
+      quantity: 1
+
+---
+kind: Item
+spec:
+  name: TW Longbow
+  icon: xx-01
+  goo:
+    red: 5
+    green: 10
+    blue: 5
+  stackable: true

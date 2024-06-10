@@ -32,6 +32,8 @@ let personState = {
 let soldierFormState = {
   numSoldiers: 0,
   numSlingshots: 0,
+  numLongbows: 0,
+  numGuns: 0,
 };
 
 function getGameContractAddr(networkName) {
@@ -211,29 +213,32 @@ export default async function update(state, block) {
 
     // Weapons
 
-    if (soldierFormState.numSlingshots > 0) {
-      const [fromWeaponEquipSlot, fromWeaponItemSlot] = getItemSlotWithBalance(
-        mobileUnit,
-        "TW Slingshot",
-        soldierFormState.numSlingshots
-      );
-      const [toWeaponEquipSlot, toWeaponItemSlot] = [
-        WEAPON_DEPOSIT_BAG_EQUIP_SLOT,
-        0, // weaponKind - 1
-      ];
+    const addWeaponsAction = (weaponCount, weaponName, actions) => {
+      if (weaponCount > 0) {
+        const [fromWeaponEquipSlot, fromWeaponItemSlot] =
+          getItemSlotWithBalance(mobileUnit, weaponName, weaponCount);
+        const [toWeaponEquipSlot, toWeaponItemSlot] = [
+          WEAPON_DEPOSIT_BAG_EQUIP_SLOT,
+          0, // weaponKind - 1
+        ];
 
-      actions.push({
-        name: "TRANSFER_ITEM_MOBILE_UNIT",
-        args: [
-          mobileUnit.id,
-          [mobileUnit.id, selectedBuilding.id],
-          [fromWeaponEquipSlot, toWeaponEquipSlot],
-          [fromWeaponItemSlot, toWeaponItemSlot],
-          nullBytes24, // Used to make a new bag on the fly
-          soldierFormState.numSlingshots,
-        ],
-      });
-    }
+        actions.push({
+          name: "TRANSFER_ITEM_MOBILE_UNIT",
+          args: [
+            mobileUnit.id,
+            [mobileUnit.id, selectedBuilding.id],
+            [fromWeaponEquipSlot, toWeaponEquipSlot],
+            [fromWeaponItemSlot, toWeaponItemSlot],
+            nullBytes24, // Used to make a new bag on the fly
+            weaponCount,
+          ],
+        });
+      }
+    };
+
+    addWeaponsAction(soldierFormState.numSlingshots, "TW Slingshot", actions);
+    addWeaponsAction(soldierFormState.numLongbows, "TW Longbow", actions);
+    addWeaponsAction(soldierFormState.numGuns, "TW Gun", actions);
 
     // Soldiers
 
@@ -274,6 +279,8 @@ export default async function update(state, block) {
 
     soldierFormState.numSoldiers = 0;
     soldierFormState.numSlingshots = 0;
+    soldierFormState.numLongbows = 0;
+    soldierFormState.numGuns = 0;
   };
 
   const claimWin = () => {
@@ -513,6 +520,54 @@ export default async function update(state, block) {
       soldierFormState.numSlingshots--;
       if (soldierFormState.numSlingshots < 0) {
         soldierFormState.numSlingshots = 0;
+      }
+    },
+    disabled: false,
+  });
+
+  buttons.push({
+    text: "Increment Longbow",
+    type: "action",
+    action: () => {
+      soldierFormState.numLongbows++;
+      if (soldierFormState.numLongbows > soldierFormState.numSoldiers) {
+        soldierFormState.numLongbows = soldierFormState.numSoldiers;
+      }
+    },
+    disabled: false,
+  });
+
+  buttons.push({
+    text: "Decrement Longbow",
+    type: "action",
+    action: () => {
+      soldierFormState.numLongbows--;
+      if (soldierFormState.numLongbows < 0) {
+        soldierFormState.numLongbows = 0;
+      }
+    },
+    disabled: false,
+  });
+
+  buttons.push({
+    text: "Increment Gun",
+    type: "action",
+    action: () => {
+      soldierFormState.numGuns++;
+      if (soldierFormState.numGuns > soldierFormState.numSoldiers) {
+        soldierFormState.numGuns = soldierFormState.numSoldiers;
+      }
+    },
+    disabled: false,
+  });
+
+  buttons.push({
+    text: "Decrement Gun",
+    type: "action",
+    action: () => {
+      soldierFormState.numGuns--;
+      if (soldierFormState.numGuns < 0) {
+        soldierFormState.numGuns = 0;
       }
     },
     disabled: false,

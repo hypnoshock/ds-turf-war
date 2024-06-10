@@ -10,6 +10,8 @@ const GAME_STATE_IN_PROGRESS = 1;
 const GAME_STATE_FINISHED = 2;
 
 const SLINGSHOT = 1;
+const LONGBOW = 2;
+const GUN = 3;
 
 // const HAMMER_SPAWN_EQUIP_SLOT = 0;
 // const SOLDIER_SPAWN_EQUIP_SLOT = 1;
@@ -230,6 +232,24 @@ export default async function update(state, block) {
     disabled: false,
   });
 
+  buttons.push({
+    text: "Research Longbow",
+    type: "action",
+    action: () => {
+      setResearch(LONGBOW);
+    },
+    disabled: false,
+  });
+
+  buttons.push({
+    text: "Research Gun",
+    type: "action",
+    action: () => {
+      setResearch(GUN);
+    },
+    disabled: false,
+  });
+
   return {
     version: 1,
     components: [
@@ -385,6 +405,10 @@ function getWeaponName(weaponEnum) {
   switch (weaponEnum) {
     case SLINGSHOT:
       return "Sling Shot";
+    case LONGBOW:
+      return "Longbow";
+    case GUN:
+      return "Gun";
     default:
       return "Unknown";
   }

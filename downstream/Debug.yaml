@@ -10,5 +10,18 @@ spec:
       quantity: 100
     - name: "TW Person"
       quantity: 100
+
+---
+kind: Bag
+spec:
+  location:
+    - 0
+    - -1
+    - 1
+  items:
     - name: "TW Slingshot"
+      quantity: 100
+    - name: "TW Longbow"
+      quantity: 100
+    - name: "TW Gun"
       quantity: 100
