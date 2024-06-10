@@ -8,10 +8,20 @@ import {Schema, CombatWinState, Node, Q, R, S, BLOCK_TIME_SECS} from "@ds/schema
 import {ZoneKind} from "@ds/ext/ZoneKind.sol";
 import {Actions} from "@ds/actions/Actions.sol";
 import {LibUtils} from "./LibUtils.sol";
-import {SOLDIER_ITEM} from "./LibCombat.sol";
+import {SOLDIER_ITEM, Weapon} from "./LibCombat.sol";
 import {PERSON_ITEM} from "./LibPerson.sol";
 import {LibTeamState, TeamState} from "./LibTeamState.sol";
-import {IZone, GAME_STATE, HAMMER_ITEM, PRIZE_ITEM, Team, TEAM_A, TEAM_B, DATA_HAS_CLAIMED_PRIZES} from "./IZone.sol";
+import {
+    IZone,
+    GAME_STATE,
+    HAMMER_ITEM,
+    PRIZE_ITEM,
+    Team,
+    TEAM_A,
+    TEAM_B,
+    DATA_HAS_CLAIMED_PRIZES,
+    SLINGSHOT_FACTORY_BUILDING_KIND
+} from "./IZone.sol";
 import {IBase, BASE_BUILDING_KIND} from "./IBase.sol";
 
 import "@ds/utils/LibString.sol";
@@ -67,7 +77,7 @@ contract TurfWarsZone is ZoneKind, IZone {
 
     // TODO: only bases can call this
     function setAreaWinner(Game ds, bytes24 origin, bytes24 mobileUnit, bool destroyBuilding) public {
-        (int16 originZ, int16 originQ, int16 originR, int16 originS) = getTileCoords(origin);
+        (int16 originZ, int16 originQ, int16 originR, int16 originS) = LibUtils.getTileCoords(origin);
         bytes24 zoneID = Node.Zone(originZ);
 
         State state = ds.getState();
@@ -238,7 +248,7 @@ contract TurfWarsZone is ZoneKind, IZone {
     }
 
     function _spawnItem(Dispatcher dispatcher, bytes24 tileID, bytes24 item, uint64 count, uint8 equipSlot) private {
-        (int16 z, int16 q, int16 r, int16 s) = getTileCoords(tileID);
+        (int16 z, int16 q, int16 r, int16 s) = LibUtils.getTileCoords(tileID);
 
         bytes24[] memory items = new bytes24[](4);
         uint64[] memory balances = new uint64[](4);
@@ -282,11 +292,6 @@ contract TurfWarsZone is ZoneKind, IZone {
         );
     }
 
-    function getTileCoords(bytes24 tile) internal pure returns (int16 z, int16 q, int16 r, int16 s) {
-        int16[4] memory keys = CompoundKeyDecoder.INT16_ARRAY(tile);
-        return (keys[0], keys[1], keys[2], keys[3]);
-    }
-
     // TODO: Only a player or owner can call this
     function _reset(Game ds, State state, bytes24 zoneID, bytes24[] memory dirtyTiles, bytes24[] memory baseBuildings)
         internal
@@ -303,7 +308,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         uint256 teamBScore = 0;
         for (uint256 i = 0; i < dirtyTiles.length; i++) {
             bytes24 tile = dirtyTiles[i];
-            (int16 tileZoneKey,,,) = getTileCoords(tile);
+            (int16 tileZoneKey,,,) = LibUtils.getTileCoords(tile);
             bytes24 tileZone = Node.Zone(tileZoneKey);
             require(tileZone == zoneID, "Tile not in zone");
             bytes24 winningUnit = bytes24(ds.getState().getData(zoneID, LibUtils.getTileWinnerKey(tile)));
@@ -321,7 +326,7 @@ contract TurfWarsZone is ZoneKind, IZone {
         // Destroy all base buildings
         for (uint256 i = 0; i < baseBuildings.length; i++) {
             bytes24 buildingTile = state.getFixedLocation(baseBuildings[i]);
-            (int16 z, int16 q, int16 r, int16 s) = getTileCoords(buildingTile);
+            (int16 z, int16 q, int16 r, int16 s) = LibUtils.getTileCoords(buildingTile);
             require(Node.Zone(z) == zoneID, "Base building not in zone");
 
             // TODO: Cannot set data on building directly because it has to be the building that does it
@@ -348,12 +353,34 @@ contract TurfWarsZone is ZoneKind, IZone {
         );
     }
 
+    // TODO: Only callable by ResearchCentre
+    function awardBlueprint(Game ds, bytes24 zoneID, Weapon researchedTech, Team team) public {
+        require(team != Team.NONE, "Zone: Cannot award blueprint to no team");
+
+        TeamState memory teamState =
+            LibTeamState.decodeTeamState(uint256(ds.getState().getData(zoneID, LibUtils.getTeamStateKey(team))));
+
+        if (researchedTech == Weapon.Slingshot) {
+            teamState.hasSlingshot = true;
+        } else if (researchedTech == Weapon.Longbow) {
+            teamState.hasLongbow = true;
+        } else if (researchedTech == Weapon.Gun) {
+            teamState.hasGun = true;
+        } else {
+            revert("Zone: Invalid researched tech");
+        }
+
+        _setDataOnZone(
+            ds.getDispatcher(), zoneID, LibUtils.getTeamStateKey(team), bytes32(LibTeamState.encodeTeamState(teamState))
+        );
+    }
+
     // -- Hooks
 
     function onUnitArrive(Game ds, bytes24 zoneID, bytes24 /*mobileUnitID*/ ) external override {
         State state = ds.getState();
         // bytes24 mobileUnitTile = state.getCurrentLocation(mobileUnitID, uint64(block.number));
-        // (int16 z,,,) = getTileCoords(mobileUnitTile);
+        // (int16 z,,,) = LibUtils.getTileCoords(mobileUnitTile);
 
         GAME_STATE gameState = getGameState(state, zoneID);
 
@@ -381,7 +408,7 @@ contract TurfWarsZone is ZoneKind, IZone {
             // // If they are on the centre tile they are locked to it
             // if (!isTeamA && !isTeamB) {
             //     bytes24 mobileUnitPrevTile = state.getPrevLocation(mobileUnitID);
-            //     (int16 prevZ,,,) = getTileCoords(mobileUnitTile);
+            //     (int16 prevZ,,,) = LibUtils.getTileCoords(mobileUnitTile);
             //     if (prevZ == z && mobileUnitPrevTile != centerTile) {
             //         return;
             //     }
@@ -409,7 +436,7 @@ contract TurfWarsZone is ZoneKind, IZone {
 
             // // Units already in zone are allowed to walk back to the centre
             // bytes24 mobileUnitPrevTile = state.getPrevLocation(mobileUnitID);
-            // (int16 prevZ,,,) = getTileCoords(mobileUnitPrevTile);
+            // (int16 prevZ,,,) = LibUtils.getTileCoords(mobileUnitPrevTile);
             // if (prevZ == z && mobileUnitPrevTile != centerTile) {
             //     return;
             // }
@@ -465,6 +492,8 @@ contract TurfWarsZone is ZoneKind, IZone {
                 "Can only build on your own team's tiles"
             );
 
+            return;
+        } else if (buildingKind == SLINGSHOT_FACTORY_BUILDING_KIND) {
             return;
         }
 

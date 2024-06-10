@@ -9,7 +9,7 @@ import {Actions} from "@ds/actions/Actions.sol";
 import {BuildingKind} from "@ds/ext/BuildingKind.sol";
 import {LibString} from "./LibString.sol";
 import {LibUtils} from "./LibUtils.sol";
-import {IZone, GAME_STATE, DATA_SELECTED_LEVEL, DATA_HAS_CLAIMED_PRIZES, TEAM_A, TEAM_B} from "./IZone.sol";
+import {IZone, GAME_STATE, DATA_SELECTED_LEVEL, DATA_HAS_CLAIMED_PRIZES, Team, TEAM_A, TEAM_B} from "./IZone.sol";
 import {IBase} from "./IBase.sol";
 import {LibPerson, PERSON_ITEM, PersonState} from "./LibPerson.sol";
 import {LibInventory} from "./LibInventory.sol";
@@ -58,7 +58,7 @@ contract TurfWarsResearchCentre is BuildingKind {
     }
 
     function _addPerson(Game ds, bytes24 buildingInstance, bytes24 actor) internal {
-        _updateResearchState(ds, buildingInstance, actor);
+        _updateResearchState(ds, buildingInstance);
 
         // Check that the player transferred enough men to the building
         uint64 amount = LibInventory.getItemBalance(ds.getState(), buildingInstance, PERSON_ITEM, PERSON_BAG_EQUIP_SLOT);
@@ -70,7 +70,7 @@ contract TurfWarsResearchCentre is BuildingKind {
     }
 
     function _removePerson(Game ds, bytes24 buildingInstance, bytes24 actor, uint16 amount) internal {
-        _updateResearchState(ds, buildingInstance, actor);
+        _updateResearchState(ds, buildingInstance);
 
         State state = ds.getState();
 
@@ -84,7 +84,7 @@ contract TurfWarsResearchCentre is BuildingKind {
         zoneImpl.spawnPerson(ds, mobileUnitTile, amount);
     }
 
-    function _updateResearchState(Game ds, bytes24 buildingInstance, bytes24 mobileUnitID) internal {
+    function _updateResearchState(Game ds, bytes24 buildingInstance) internal {
         (Weapon researchedTech, int128 researchPerc) = getResearchState(ds, buildingInstance);
 
         if (researchedTech == Weapon.None) {
@@ -97,6 +97,13 @@ contract TurfWarsResearchCentre is BuildingKind {
             _setData(ds, buildingInstance, DATA_RESEARCH_PERC, uint256(0));
 
             // Give the player the researched tech either blueprint item to build factory or set flag to allow building
+            State state = ds.getState();
+            bytes24 tile = state.getFixedLocation(buildingInstance);
+            bytes24 zoneID = Node.Zone(LibUtils.getTileZone(tile));
+            Team team = LibUtils.getTileTeam(state, zoneID, tile);
+
+            IZone zoneImpl = IZone(state.getImplementation(zoneID));
+            zoneImpl.awardBlueprint(ds, zoneID, researchedTech, team);
         } else {
             _setData(ds, buildingInstance, DATA_RESEARCH_PERC, uint256(int256(researchPerc)));
             _setData(ds, buildingInstance, DATA_RESEARCH_UPDATE_BLOCK, uint256(block.number));

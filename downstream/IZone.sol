@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Game} from "cog/IGame.sol";
 import {State} from "cog/IState.sol";
+import {Weapon} from "LibCombat.sol";
 
 enum GAME_STATE {
     NOT_STARTED,
@@ -15,6 +16,8 @@ enum Team {
     A,
     B
 }
+
+bytes24 constant SLINGSHOT_FACTORY_BUILDING_KIND = 0xbe92755c000000000000000046ef40460000000000000003;
 
 bytes24 constant HAMMER_ITEM = 0x6a7a67f09e2cd31d00000001000000140000001400000014;
 bytes24 constant PRIZE_ITEM = 0x6a7a67f0ca613996000000010000004b0000000100000001;
@@ -31,4 +34,5 @@ interface IZone {
     function burnTileBag(Game ds, bytes24 tile, bytes24 bagID, uint8 equipSlot) external;
     function spawnSoldier(Game ds, bytes24 tileID, uint64 count) external;
     function spawnPerson(Game ds, bytes24 tileID, uint64 count) external;
+    function awardBlueprint(Game ds, bytes24 zoneID, Weapon researchedTech, Team team) external;
 }
