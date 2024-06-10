@@ -25,13 +25,13 @@ spec:
     - name: Blue Goo
       quantity: 10
   outputs:
-    - name: Slingshot
+    - name: TW Slingshot
       quantity: 1
 
 ---
 kind: Item
 spec:
-  name: Slingshot
+  name: TW Slingshot
   icon: xx-01
   goo:
     red: 10

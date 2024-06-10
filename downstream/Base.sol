@@ -12,6 +12,7 @@ import {IZone, GAME_STATE, DATA_SELECTED_LEVEL, Team} from "./IZone.sol";
 import {IBase} from "./IBase.sol";
 import {
     LibCombat,
+    Weapon,
     BattalionState,
     DATA_INIT_STATE,
     NUM_WEAPON_KINDS,
@@ -24,6 +25,7 @@ import {LibInventory} from "./LibInventory.sol";
 using Schema for State;
 
 uint8 constant SOLDIER_BAG_EQUIP_SLOT = 0;
+uint8 constant WEAPON_BAG_EQUIP_SLOT = 1;
 uint8 constant PERSON_BAG_EQUIP_SLOT = 1;
 
 contract Base is BuildingKind, IBase {
@@ -59,7 +61,7 @@ contract Base is BuildingKind, IBase {
             _removePerson(ds, buildingInstance, actor, amount);
         } else if ((bytes4)(payload) == this.addSoldiers.selector) {
             (uint8 amount) = abi.decode(payload[4:], (uint8));
-            _addSoldiers(ds, buildingInstance, actor, amount, [0, 0, 0, 0, 0], [0, 0, 0]);
+            _addSoldiers(ds, buildingInstance, actor, amount);
         } else if ((bytes4)(payload) == this.continueBattle.selector) {
             LibCombat.continueBattle(ds, buildingInstance);
         } else {
@@ -109,14 +111,9 @@ contract Base is BuildingKind, IBase {
         zoneImpl.spawnPerson(ds, mobileUnitTile, amount);
     }
 
-    function _addSoldiers(
-        Game ds,
-        bytes24 buildingInstance,
-        bytes24 actor,
-        uint8 amount,
-        uint8[NUM_WEAPON_KINDS] memory weapons,
-        uint8[NUM_DEFENCE_LEVELS] memory defence
-    ) internal {
+    function _addSoldiers(Game ds, bytes24 buildingInstance, bytes24 actor, uint8 amount) internal {
+        State state = ds.getState();
+
         // Check that the player transferred enough men to the building
         require(
             LibInventory.hasItem(ds.getState(), buildingInstance, SOLDIER_ITEM, amount, SOLDIER_BAG_EQUIP_SLOT),
@@ -125,16 +122,28 @@ contract Base is BuildingKind, IBase {
 
         LibInventory.burnBagContents(ds, buildingInstance, SOLDIER_BAG_EQUIP_SLOT);
 
-        // debug
-        weapons[1] = amount / 2;
-        defence[1] = amount / 2;
-
-        // Make sure total weapons and defence is equal to the amount of soldiers we are adding
+        // Add weapons
         uint8 unarmedSoldiers = amount;
-        for (uint8 j = 0; j < NUM_WEAPON_KINDS; j++) {
-            unarmedSoldiers -= weapons[j];
+        uint8[NUM_WEAPON_KINDS] memory weapons;
+        uint8[NUM_DEFENCE_LEVELS] memory defence;
+        bytes24 weaponBag = state.getEquipSlot(buildingInstance, WEAPON_BAG_EQUIP_SLOT);
+        for (uint8 i = 0; i < 4; i++) {
+            (bytes24 weaponItem, uint64 weaponBalance) = state.getItemSlot(weaponBag, i);
+            if (weaponItem == bytes24(0) || weaponBalance == 0) {
+                continue;
+            }
+
+            Weapon weapon = LibCombat.getWeaponKind(weaponItem);
+            if (weapon == Weapon.None) {
+                continue;
+            }
+
+            weapons[uint8(weapon)] += uint8(weaponBalance);
+            unarmedSoldiers -= uint8(weaponBalance);
         }
+
         weapons[0] += unarmedSoldiers;
+        LibInventory.burnBagContents(ds, buildingInstance, WEAPON_BAG_EQUIP_SLOT);
 
         unarmedSoldiers = amount;
         for (uint8 j = 0; j < NUM_DEFENCE_LEVELS; j++) {

@@ -13,6 +13,8 @@ using Schema for State;
 
 bytes24 constant SOLDIER_ITEM = 0x6a7a67f05c334a0b000000010000000a0000000a00000028;
 
+bytes24 constant SLINGSHOT_ITEM = 0x6a7a67f05d101e920000000100000005000000050000000a;
+
 string constant DATA_BATTLE_START_BLOCK = "battleStartBlock";
 string constant DATA_INIT_STATE = "initState";
 
@@ -229,13 +231,13 @@ library LibCombat {
             // Both sides have equal chance of striking regardless of the number of soldiers on their side
             if (rndSeed & 0xff > 127) {
                 // Team A strikes
-                battalionStates[uint8(Team.B) - 1].soldierCount--;
+                _attack(battalionStates[uint8(Team.A) - 1], battalionStates[uint8(Team.B) - 1], rndSeed);
                 if (battalionStates[uint8(Team.B) - 1].soldierCount == 0) {
                     return (battalionStates, true);
                 }
             } else {
                 // Team B strikes
-                battalionStates[uint8(Team.A) - 1].soldierCount--;
+                _attack(battalionStates[uint8(Team.B) - 1], battalionStates[uint8(Team.A) - 1], rndSeed);
                 if (battalionStates[uint8(Team.A) - 1].soldierCount == 0) {
                     return (battalionStates, true);
                 }
@@ -243,6 +245,53 @@ library LibCombat {
         }
 
         return (battalionStates, isFinished);
+    }
+
+    function _attack(BattalionState memory attacker, BattalionState memory defender, uint256 rndSeed) internal {
+        uint8 rndSoldier = (uint8((rndSeed >> 8) & 0xff) % attacker.soldierCount);
+        Weapon attackerWeapon;
+        uint16 weaponCount = 0;
+        for (uint8 i = 0; i < NUM_WEAPON_KINDS; i++) {
+            weaponCount += attacker.weapons[i];
+            if (rndSoldier < weaponCount) {
+                attackerWeapon = Weapon(i);
+                break;
+            }
+        }
+
+        rndSoldier = (uint8((rndSeed >> 16) & 0xff) % defender.soldierCount);
+        Weapon defenderWeapon;
+        weaponCount = 0;
+        for (uint8 i = 0; i < NUM_WEAPON_KINDS; i++) {
+            weaponCount += defender.weapons[i];
+            if (rndSoldier < weaponCount) {
+                defenderWeapon = Weapon(i);
+                break;
+            }
+        }
+
+        // Different probabilities for different weapons
+        uint8 rndWin = uint8((rndSeed >> 24) & 0xff);
+        bool killedOpponent = false;
+
+        if (attackerWeapon == Weapon.Slingshot) {
+            if (rndWin < 128) {
+                killedOpponent = true;
+            }
+        } else if (defenderWeapon == Weapon.Longbow) {
+            if (rndWin < 192) {
+                killedOpponent = true;
+            }
+        } else if (defenderWeapon == Weapon.Gun) {
+            killedOpponent = true;
+        } else if (rndWin < 64) {
+            killedOpponent = true;
+        }
+
+        if (killedOpponent) {
+            defender.soldierCount--;
+            defender.weapons[uint8(defenderWeapon)]--;
+        }
     }
 
     function startBattle(Game ds, bytes24 buildingInstance) internal {
@@ -312,5 +361,13 @@ library LibCombat {
                 (buildingInstance, LibUtils.getRndSeedKey(block.number), blockhash(block.number - 1))
             )
         );
+    }
+
+    function getWeaponKind(bytes24 weapon) internal pure returns (Weapon) {
+        if (weapon == SLINGSHOT_ITEM) {
+            return Weapon.Slingshot;
+        }
+
+        return Weapon.None;
     }
 }

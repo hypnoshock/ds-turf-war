@@ -12,6 +12,7 @@ const SOLDIER_SPAWN_EQUIP_SLOT = 1;
 const PERSON_SPAWN_EQUIP_SLOT = 2;
 
 const SOLDIER_DEPOSIT_BAG_EQUIP_SLOT = 0;
+const WEAPON_DEPOSIT_BAG_EQUIP_SLOT = 1;
 const PERSON_DEPOSIT_BAG_EQUIP_SLOT = 1;
 
 const func = ds;
@@ -26,6 +27,11 @@ let battleState = {
 let personState = {
   team: 0,
   count: 0,
+};
+
+let soldierFormState = {
+  numSoldiers: 0,
+  numSlingshots: 0,
 };
 
 function getGameContractAddr(networkName) {
@@ -89,9 +95,14 @@ export default async function update(state, block) {
   }
 
   // The team that has claimed the tile will be on the defence
+  const defenderBattalion = getBattalionState(battleState, tileTeam);
   const defenders = getSoldierCount(battleState, tileTeam);
 
   // Attackers are on the opposing team
+  const attackerBattalion = getBattalionState(
+    battleState,
+    tileTeam == TEAM_A ? TEAM_B : TEAM_A
+  );
   const attackers = getSoldierCount(
     battleState,
     tileTeam == TEAM_A ? TEAM_B : TEAM_A
@@ -195,23 +206,56 @@ export default async function update(state, block) {
     );
   };
 
-  const addSoldiers = (amount) => {
-    const [fromEquipSlot, fromItemSlot] = getItemSlotWithBalance(
+  const addSoldiers = () => {
+    const actions = [];
+
+    // Weapons
+
+    if (soldierFormState.numSlingshots > 0) {
+      const [fromWeaponEquipSlot, fromWeaponItemSlot] = getItemSlotWithBalance(
+        mobileUnit,
+        "TW Slingshot",
+        soldierFormState.numSlingshots
+      );
+      const [toWeaponEquipSlot, toWeaponItemSlot] = [
+        WEAPON_DEPOSIT_BAG_EQUIP_SLOT,
+        0, // weaponKind - 1
+      ];
+
+      actions.push({
+        name: "TRANSFER_ITEM_MOBILE_UNIT",
+        args: [
+          mobileUnit.id,
+          [mobileUnit.id, selectedBuilding.id],
+          [fromWeaponEquipSlot, toWeaponEquipSlot],
+          [fromWeaponItemSlot, toWeaponItemSlot],
+          nullBytes24, // Used to make a new bag on the fly
+          soldierFormState.numSlingshots,
+        ],
+      });
+    }
+
+    // Soldiers
+
+    const [fromSoldierEquipSlot, fromSoldierItemSlot] = getItemSlotWithBalance(
       mobileUnit,
       "TW Soldier"
     );
-    const [toEquipSlot, toItemSlot] = [SOLDIER_DEPOSIT_BAG_EQUIP_SLOT, 0];
+    const [toSoldierEquipSlot, toSoldierItemSlot] = [
+      SOLDIER_DEPOSIT_BAG_EQUIP_SLOT,
+      0,
+    ];
 
-    ds.dispatch(
+    actions.push(
       {
         name: "TRANSFER_ITEM_MOBILE_UNIT",
         args: [
           mobileUnit.id,
           [mobileUnit.id, selectedBuilding.id],
-          [fromEquipSlot, toEquipSlot],
-          [fromItemSlot, toItemSlot],
+          [fromSoldierEquipSlot, toSoldierEquipSlot],
+          [fromSoldierItemSlot, toSoldierItemSlot],
           nullBytes24, // Used to make a new bag on the fly
-          amount,
+          soldierFormState.numSoldiers,
         ],
       },
       {
@@ -219,10 +263,17 @@ export default async function update(state, block) {
         args: [
           selectedBuilding.id,
           mobileUnit.id,
-          ds.encodeCall("function addSoldiers(uint8)", [amount]),
+          ds.encodeCall("function addSoldiers(uint8)", [
+            soldierFormState.numSoldiers,
+          ]),
         ],
       }
     );
+
+    ds.dispatch(...actions);
+
+    soldierFormState.numSoldiers = 0;
+    soldierFormState.numSlingshots = 0;
   };
 
   const claimWin = () => {
@@ -324,11 +375,33 @@ export default async function update(state, block) {
     DATA_BATTLE_START_BLOCK
   );
 
+  const getWeaponHtml = (battalion) => {
+    if (!battalion) {
+      return "";
+    }
+
+    const weapons = battalion.weapons;
+
+    let html = "<p>";
+    html += `🤜 ${weapons[0]}`;
+    html += ` : 🪃 ${weapons[1]}`;
+    html += ` : 🏹 ${weapons[2]}`;
+    html += ` : 🔫 ${weapons[3]}`;
+    html += "</p>";
+
+    return html;
+  };
+
   let html = `
     <p>population: ${personState.count}</p>
     <p>defenders: ${defenders}</p>
+    ${getWeaponHtml(defenderBattalion)}
     <p>attackers: ${attackers}</p>
+    ${getWeaponHtml(attackerBattalion)}
     <p>battle finished: ${battleState.isFinished}</p>
+    <h3>Add Soldiers</h3>
+    <p>Number of Soldiers to add: ${soldierFormState.numSoldiers}</p>
+    <p>Number of Slingshots to add: ${soldierFormState.numSlingshots}</p>
   `;
   const buttons = [];
 
@@ -399,21 +472,59 @@ export default async function update(state, block) {
   });
 
   buttons.push({
-    text: "Add 1 soldier",
+    text: "Increment Soldiers",
     type: "action",
     action: () => {
-      addSoldiers(1);
+      soldierFormState.numSoldiers++;
     },
     disabled: false,
   });
 
   buttons.push({
-    text: "Add 5 soldiers",
+    text: "Decrement Soldiers",
     type: "action",
     action: () => {
-      addSoldiers(5);
+      soldierFormState.numSoldiers--;
+      if (soldierFormState.numSoldiers < 0) {
+        soldierFormState.numSoldiers = 0;
+      }
     },
     disabled: false,
+  });
+
+  // if (teamState.hasSlingshot) {
+
+  buttons.push({
+    text: "Increment Slingshot",
+    type: "action",
+    action: () => {
+      soldierFormState.numSlingshots++;
+      if (soldierFormState.numSlingshots > soldierFormState.numSoldiers) {
+        soldierFormState.numSlingshots = soldierFormState.numSoldiers;
+      }
+    },
+    disabled: false,
+  });
+
+  buttons.push({
+    text: "Decrement Slingshot",
+    type: "action",
+    action: () => {
+      soldierFormState.numSlingshots--;
+      if (soldierFormState.numSlingshots < 0) {
+        soldierFormState.numSlingshots = 0;
+      }
+    },
+    disabled: false,
+  });
+
+  buttons.push({
+    text: "Apply Soldiers",
+    type: "action",
+    action: () => {
+      addSoldiers();
+    },
+    disabled: soldierFormState.numSoldiers < 1,
   });
 
   return {
@@ -602,6 +713,10 @@ function getTeam(teamAPlayers, teamBPlayers, playerId) {
   } else {
     return "";
   }
+}
+
+function getBattalionState(battleState, teamKey) {
+  return battleState.battalionState.find((t) => t.teamKey === teamKey);
 }
 
 function getSoldierCount(battleState, teamKey) {
