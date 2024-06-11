@@ -242,7 +242,10 @@ function generateDevBagId(tile, equipSlot = 0) {
     )
   );
   // String manipulation instead of bitwise operations is icky but it works! :D
-  const bagKey64 = BigInt(`0x${bagKey256.slice(-16)}`).toString(16);
+  let bagKey64 = BigInt(`0x${bagKey256.slice(-16)}`).toString(16);
+  if (bagKey64.length % 2 !== 0) {
+    bagKey64 = "0" + bagKey64;
+  }
 
   // Yes this is as horrendous as it looks
   return "0xb1c93f09000000000000000000000000" + bagKey64;
