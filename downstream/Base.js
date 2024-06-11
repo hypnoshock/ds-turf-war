@@ -15,6 +15,8 @@ const SOLDIER_DEPOSIT_BAG_EQUIP_SLOT = 0;
 const WEAPON_DEPOSIT_BAG_EQUIP_SLOT = 1;
 const PERSON_DEPOSIT_BAG_EQUIP_SLOT = 1;
 
+const SOLDIER_ITEM_NAME = "TW Person"; // "TW Soldier";
+
 const func = ds;
 const networkEndpoint = ds.config.networkEndpoint;
 const gameContractAddr = getGameContractAddr(ds.config.networkName);
@@ -244,7 +246,7 @@ export default async function update(state, block) {
 
     const [fromSoldierEquipSlot, fromSoldierItemSlot] = getItemSlotWithBalance(
       mobileUnit,
-      "TW Soldier"
+      SOLDIER_ITEM_NAME
     );
     const [toSoldierEquipSlot, toSoldierItemSlot] = [
       SOLDIER_DEPOSIT_BAG_EQUIP_SLOT,
@@ -291,7 +293,7 @@ export default async function update(state, block) {
     );
     const [toSoldierEquipSlot, toSoldierItemSlot] = getCompatibleOrEmptySlot(
       mobileUnit,
-      "TW Soldier",
+      SOLDIER_ITEM_NAME,
       1
     );
 
