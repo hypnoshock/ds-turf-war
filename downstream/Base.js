@@ -308,73 +308,74 @@ export default async function update(state, block) {
       },
     ];
 
+    // NOTE: Buildings no longer destroyed on win
     // If attackers win, then they gain a hammer and their soldiers
-    const attackersWin = attackers > defenders;
-    if (attackersWin) {
-      const hammerBagID = generateDevBagId(
-        selectedBuilding.location.tile,
-        HAMMER_SPAWN_EQUIP_SLOT
-      );
-      const soldierBagID = generateDevBagId(
-        selectedBuilding.location.tile,
-        SOLDIER_SPAWN_EQUIP_SLOT
-      );
-      actions.push(
-        {
-          name: "TRANSFER_ITEM_MOBILE_UNIT",
-          args: [
-            mobileUnit.id,
-            [selectedBuilding.location.tile.id, mobileUnit.id],
-            [HAMMER_SPAWN_EQUIP_SLOT, toHammerEquipSlot],
-            [0, toHammerItemSlot],
-            nullBytes24,
-            1, // Claim hammer
-          ],
-        },
-        {
-          name: "TRANSFER_ITEM_MOBILE_UNIT",
-          args: [
-            mobileUnit.id,
-            [selectedBuilding.location.tile.id, mobileUnit.id],
-            [SOLDIER_SPAWN_EQUIP_SLOT, toSoldierEquipSlot],
-            [0, toSoldierItemSlot],
-            nullBytes24,
-            attackers, // Claim soldiers
-          ],
-        },
-        // Cleanup the temp bags
-        {
-          name: "ZONE_USE",
-          args: [
-            mobileUnit.id,
-            ds.encodeCall(
-              "function destroyTileBag(bytes24,bytes24,uint8,bytes24[])",
-              [
-                selectedBuilding.location.tile.id,
-                hammerBagID,
-                HAMMER_SPAWN_EQUIP_SLOT,
-                [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
-              ]
-            ),
-          ],
-        },
-        {
-          name: "ZONE_USE",
-          args: [
-            mobileUnit.id,
-            ds.encodeCall(
-              "function destroyTileBag(bytes24,bytes24,uint8,bytes24[])",
-              [
-                selectedBuilding.location.tile.id,
-                soldierBagID,
-                SOLDIER_SPAWN_EQUIP_SLOT,
-                [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
-              ]
-            ),
-          ],
-        }
-      );
-    }
+    // const attackersWin = attackers > defenders;
+    // if (attackersWin) {
+    //   const hammerBagID = generateDevBagId(
+    //     selectedBuilding.location.tile,
+    //     HAMMER_SPAWN_EQUIP_SLOT
+    //   );
+    //   const soldierBagID = generateDevBagId(
+    //     selectedBuilding.location.tile,
+    //     SOLDIER_SPAWN_EQUIP_SLOT
+    //   );
+    //   actions.push(
+    //     {
+    //       name: "TRANSFER_ITEM_MOBILE_UNIT",
+    //       args: [
+    //         mobileUnit.id,
+    //         [selectedBuilding.location.tile.id, mobileUnit.id],
+    //         [HAMMER_SPAWN_EQUIP_SLOT, toHammerEquipSlot],
+    //         [0, toHammerItemSlot],
+    //         nullBytes24,
+    //         1, // Claim hammer
+    //       ],
+    //     },
+    //     {
+    //       name: "TRANSFER_ITEM_MOBILE_UNIT",
+    //       args: [
+    //         mobileUnit.id,
+    //         [selectedBuilding.location.tile.id, mobileUnit.id],
+    //         [SOLDIER_SPAWN_EQUIP_SLOT, toSoldierEquipSlot],
+    //         [0, toSoldierItemSlot],
+    //         nullBytes24,
+    //         attackers, // Claim soldiers
+    //       ],
+    //     },
+    //     // Cleanup the temp bags
+    //     {
+    //       name: "ZONE_USE",
+    //       args: [
+    //         mobileUnit.id,
+    //         ds.encodeCall(
+    //           "function destroyTileBag(bytes24,bytes24,uint8,bytes24[])",
+    //           [
+    //             selectedBuilding.location.tile.id,
+    //             hammerBagID,
+    //             HAMMER_SPAWN_EQUIP_SLOT,
+    //             [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
+    //           ]
+    //         ),
+    //       ],
+    //     },
+    //     {
+    //       name: "ZONE_USE",
+    //       args: [
+    //         mobileUnit.id,
+    //         ds.encodeCall(
+    //           "function destroyTileBag(bytes24,bytes24,uint8,bytes24[])",
+    //           [
+    //             selectedBuilding.location.tile.id,
+    //             soldierBagID,
+    //             SOLDIER_SPAWN_EQUIP_SLOT,
+    //             [nullBytes24, nullBytes24, nullBytes24, nullBytes24], // The dev destroy bag action is mental - it uses the length of the array to determine slot count. Doesn't care about contents!
+    //           ]
+    //         ),
+    //       ],
+    //     }
+    //   );
+    // }
 
     ds.dispatch(...actions);
   };

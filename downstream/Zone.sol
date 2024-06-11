@@ -78,7 +78,7 @@ contract TurfWarsZone is ZoneKind, IZone {
     }
 
     // TODO: only bases can call this
-    function setAreaWinner(Game ds, bytes24 origin, bytes24 mobileUnit, bool destroyBuilding) public {
+    function setAreaWinner(Game ds, bytes24 origin, bytes24 mobileUnit, bool overrideTiles) public {
         (int16 originZ, int16 originQ, int16 originR, int16 originS) = LibUtils.getTileCoords(origin);
         bytes24 zoneID = Node.Zone(originZ);
 
@@ -99,7 +99,7 @@ contract TurfWarsZone is ZoneKind, IZone {
                     int16 s = -q - r;
                     bytes24 nextTile = Node.Tile(originZ, q, r, s);
                     if (distance(origin, nextTile) <= uint256(uint16(range))) {
-                        if (destroyBuilding || !_hasTileBeenWon(ds, nextTile, zoneID)) {
+                        if (overrideTiles || !_hasTileBeenWon(ds, nextTile, zoneID)) {
                             _setTileWinner(ds, nextTile, mobileUnit, zoneID);
                         }
                         // tileCount++;
@@ -108,12 +108,12 @@ contract TurfWarsZone is ZoneKind, IZone {
             }
         }
 
-        if (destroyBuilding) {
-            _spawnHammer(ds, origin, 1);
-            ds.getDispatcher().dispatch(
-                abi.encodeCall(Actions.DEV_DESTROY_BUILDING, (originZ, originQ, originR, originS))
-            );
-        }
+        // if (destroyBuilding) {
+        //     _spawnHammer(ds, origin, 1);
+        //     ds.getDispatcher().dispatch(
+        //         abi.encodeCall(Actions.DEV_DESTROY_BUILDING, (originZ, originQ, originR, originS))
+        //     );
+        // }
     }
 
     function distance(bytes24 tileA, bytes24 tileB) internal pure returns (uint256) {

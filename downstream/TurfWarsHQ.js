@@ -174,9 +174,18 @@ export default async function update(state, block) {
   const resetGame = () => {
     console.log("Resetting game");
 
-    const baseBuildingIds = getBuildingsByType(buildings, "TW Lite Base").map(
-      (b) => b.id
-    );
+    const baseBuildingIds = getBuildingsByType(buildings, "TW Lite Base")
+      .map((b) => b.id)
+      .concat(
+        getBuildingsByType(buildings, "TW Research Centre").map((b) => b.id)
+      )
+      .concat(
+        getBuildingsByType(buildings, "TW Slingshot Factory").map((b) => b.id)
+      )
+      .concat(
+        getBuildingsByType(buildings, "TW Longbow Factory").map((b) => b.id)
+      )
+      .concat(getBuildingsByType(buildings, "TW Gun Factory").map((b) => b.id));
 
     ds.dispatch({
       name: "ZONE_USE",

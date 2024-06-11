@@ -194,16 +194,12 @@ contract Base is BuildingKind, IBase {
 
         LibCombat.resetStartBlock(ds, buildingInstance);
 
-        if (tileTeam == winningTeam) {
-            // If the defenders won, set the resultant state as init state
-            LibCombat.setInitState(ds, buildingInstance, battalionStates);
-        } else {
-            // Destroy building
-            LibCombat.resetInitState(ds, buildingInstance);
+        // If the defenders won, set the resultant state as init state
+        LibCombat.setInitState(ds, buildingInstance, battalionStates);
+        if (tileTeam != winningTeam) {
             IZone zoneImpl = IZone(state.getImplementation(zone));
             zoneImpl.setAreaWinner(ds, tile, actor, true);
-
-            zoneImpl.spawnSoldier(ds, tile, battalionStates[uint8(winningTeam) - 1].soldierCount);
+            // zoneImpl.spawnSoldier(ds, tile, battalionStates[uint8(winningTeam) - 1].soldierCount);
         }
     }
 
