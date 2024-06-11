@@ -8,6 +8,8 @@ import {Actions} from "@ds/actions/Actions.sol";
 import {IZone, GAME_STATE, Team} from "./IZone.sol";
 import {BASE_BUILDING_KIND} from "./IBase.sol";
 import {LibUtils} from "./LibUtils.sol";
+import {LibConstruction} from "./LibConstruction.sol";
+import {LibCombat} from "./LibCombat.sol";
 
 import {ABDKMath64x64} from "./libs/ABDKMath64x64.sol";
 
@@ -119,6 +121,13 @@ library LibPerson {
         if (state.getBuildingKind(buildingInstance) != BASE_BUILDING_KIND) {
             return personStates;
         }
+
+        // Only increase population building is built and not at war
+        if (!LibConstruction.getIsBuilt(ds, buildingInstance) || LibCombat.hasCombatStarted(ds, buildingInstance)) {
+            return personStates;
+        }
+
+        // TODO: Check if building is at war (currently expensive to find out)
 
         uint256 elapsedBlocks = (blockNumber - updateBlock) / 2; // We'll update the population every 2 blocks
         if (elapsedBlocks > MAX_ELAPSED_BLOCKS) {

@@ -21,8 +21,11 @@ import {
 } from "./LibCombat.sol";
 import {LibPerson, PERSON_ITEM, PersonState} from "./LibPerson.sol";
 import {LibInventory} from "./LibInventory.sol";
+import {LibConstruction} from "./LibConstruction.sol";
 
 using Schema for State;
+
+uint16 constant DEFAULT_NUM_STARTER_PEOPLE = 10;
 
 uint8 constant SOLDIER_BAG_EQUIP_SLOT = 0;
 uint8 constant WEAPON_BAG_EQUIP_SLOT = 1;
@@ -32,6 +35,7 @@ contract Base is BuildingKind, IBase {
     function startBattle() external {}
     function continueBattle() external {}
     function claimWin() external {}
+    function claimBuild() external {}
 
     function addSoldiers(uint8 amount) external {}
     function removeSoldiers(uint64 amount) external {}
@@ -54,6 +58,8 @@ contract Base is BuildingKind, IBase {
             _startBattle(ds, buildingInstance);
         } else if ((bytes4)(payload) == this.claimWin.selector) {
             _claimWin(ds, buildingInstance, actor);
+        } else if ((bytes4)(payload) == this.claimBuild.selector) {
+            _claimBuild(ds, buildingInstance, actor);
         } else if ((bytes4)(payload) == this.addPerson.selector) {
             _addPerson(ds, buildingInstance, actor);
         } else if ((bytes4)(payload) == this.removePerson.selector) {
@@ -85,6 +91,7 @@ contract Base is BuildingKind, IBase {
         }
         require(readyTeams > 1, "Base: At least 2 teams must have soldiers to start battle");
 
+        LibConstruction.updateBuildState(ds, buildingInstance);
         LibCombat.startBattle(ds, buildingInstance);
     }
 
@@ -96,6 +103,7 @@ contract Base is BuildingKind, IBase {
 
         LibInventory.burnBagContents(ds, buildingInstance, PERSON_BAG_EQUIP_SLOT);
         LibPerson.addPerson(ds, buildingInstance, actor, uint16(amount));
+        LibConstruction.updateBuildState(ds, buildingInstance);
     }
 
     function _removePerson(Game ds, bytes24 buildingInstance, bytes24 actor, uint16 amount) internal {
@@ -109,6 +117,8 @@ contract Base is BuildingKind, IBase {
         bytes24 zone = Node.Zone(LibUtils.getTileZone(mobileUnitTile));
         IZone zoneImpl = IZone(state.getImplementation(zone));
         zoneImpl.spawnPerson(ds, mobileUnitTile, amount);
+
+        LibConstruction.updateBuildState(ds, buildingInstance);
     }
 
     function _addSoldiers(Game ds, bytes24 buildingInstance, bytes24 actor, uint8 amount) internal {
@@ -154,23 +164,6 @@ contract Base is BuildingKind, IBase {
         LibCombat.addSoldiers(ds, buildingInstance, actor, amount, weapons, defence);
     }
 
-    // -- Hooks
-
-    function construct(Game ds, bytes24, /*buildingKind*/ bytes24 mobileUnitID, bytes memory coordsEncoded)
-        public
-        override
-    {
-        State state = ds.getState();
-
-        // NOTE: Cannot set data in construct hook because it's fired off before owner set
-
-        int16[4] memory coords = abi.decode(coordsEncoded, (int16[4]));
-        bytes24 zone = Node.Zone(coords[0]);
-        IZone zoneImpl = IZone(state.getImplementation(zone));
-        require(address(zoneImpl) != address(0), "Base::construct - No implementation for zone");
-        zoneImpl.setAreaWinner(ds, Node.Tile(coords[0], coords[1], coords[2], coords[3]), mobileUnitID, false);
-    }
-
     function _claimWin(Game ds, bytes24 buildingInstance, bytes24 actor) internal {
         State state = ds.getState();
 
@@ -192,27 +185,39 @@ contract Base is BuildingKind, IBase {
         // TODO: Either side should be able to end the battle but for that to work, we need to save teams to tiles instead of mobile unit IDs
         require(playerTeam == winningTeam, "Base: Player is not in the winning team");
 
-        LibCombat.resetStartBlock(ds, buildingInstance);
+        // must be updated before ending combat so the update block is updated but the person counts won't be
+        LibConstruction.updateBuildState(ds, buildingInstance);
 
-        // If the defenders won, set the resultant state as init state
+        LibCombat.resetStartBlock(ds, buildingInstance);
         LibCombat.setInitState(ds, buildingInstance, battalionStates);
+
+        // If attackers win
         if (tileTeam != winningTeam) {
-            IZone zoneImpl = IZone(state.getImplementation(zone));
-            zoneImpl.setAreaWinner(ds, tile, actor, true);
-            // zoneImpl.spawnSoldier(ds, tile, battalionStates[uint8(winningTeam) - 1].soldierCount);
+            if (LibConstruction.getIsBuilt(ds, buildingInstance)) {
+                IZone zoneImpl = IZone(state.getImplementation(zone));
+                zoneImpl.setAreaWinner(ds, tile, actor, true);
+                // zoneImpl.spawnSoldier(ds, tile, battalionStates[uint8(winningTeam) - 1].soldierCount);
+            } else {
+                // Destroy building
+                // zoneImpl.spawnSoldier(ds, tile, battalionStates[uint8(winningTeam) - 1].soldierCount);
+            }
         }
     }
 
-    function zoneAddPerson(Game ds, bytes24 mobileUnitID, bytes24 buildingInstance, uint16 amount) public {
+    function _claimBuild(Game ds, bytes24 buildingInstance, bytes24 actor) internal {
         State state = ds.getState();
 
-        // Only callable from zone contract
-        bytes24 zone = Node.Zone(LibUtils.getTileZone(state.getFixedLocation(buildingInstance)));
-        IZone zoneImpl = IZone(state.getImplementation(zone));
-        require(msg.sender == address(zoneImpl), "Base: Only zone contract can call this function");
+        LibConstruction.updateBuildState(ds, buildingInstance);
 
-        LibPerson.addPerson(ds, buildingInstance, mobileUnitID, amount);
+        require(LibConstruction.getIsBuilt(ds, buildingInstance), "Base: Building not finished yet");
+
+        bytes24 tile = state.getFixedLocation(buildingInstance);
+        bytes24 zone = Node.Zone(LibUtils.getTileZone(tile));
+        IZone zoneImpl = IZone(state.getImplementation(zone));
+        zoneImpl.setAreaWinner(ds, tile, actor, false);
     }
+
+    // -- External getters
 
     function getBattleState(Game ds, bytes24 buildingInstance, uint256 blockNumber)
         public
@@ -226,5 +231,25 @@ contract Base is BuildingKind, IBase {
         returns (PersonState[] memory)
     {
         return LibPerson.getPersonStates(ds, buildingInstance, blockNumber);
+    }
+
+    function getBuildState(Game ds, bytes24 buildingInstance) public returns (int128) {
+        return LibConstruction.getBuildState(ds, buildingInstance);
+    }
+
+    // -- Hooks
+
+    function onConstructLate(Game ds, bytes24 mobileUnitID, bytes24 buildingInstance, bool isInitBase) public {
+        State state = ds.getState();
+
+        // Only callable from zone contract
+        bytes24 zone = Node.Zone(LibUtils.getTileZone(state.getFixedLocation(buildingInstance)));
+        IZone zoneImpl = IZone(state.getImplementation(zone));
+        require(msg.sender == address(zoneImpl), "Base: Only zone contract can call this function");
+
+        if (isInitBase) {
+            LibPerson.addPerson(ds, buildingInstance, mobileUnitID, DEFAULT_NUM_STARTER_PEOPLE);
+            LibConstruction.setIsBuilt(ds, buildingInstance, true);
+        }
     }
 }

@@ -41,7 +41,6 @@ contract TurfWarsZone is ZoneKind, IZone {
     int16 constant DEFAULT_CLAIM_RANGE = 2;
     uint64 constant DEFAULT_GAME_DURATION_BLOCKS = 120 * 60 / BLOCK_TIME_SECS; // (15 * 60)
     uint64 constant DEFAULT_HAMMER_COUNT = 10;
-    uint16 constant DEFAULT_NUM_STARTER_PEOPLE = 10;
 
     // Data keys
     string constant DATA_GAME_STATE = "gameState";
@@ -79,7 +78,7 @@ contract TurfWarsZone is ZoneKind, IZone {
 
     // TODO: only bases can call this
     function setAreaWinner(Game ds, bytes24 origin, bytes24 mobileUnit, bool overrideTiles) public {
-        (int16 originZ, int16 originQ, int16 originR, int16 originS) = LibUtils.getTileCoords(origin);
+        (int16 originZ, int16 originQ, int16 originR, /*int16 originS*/ ) = LibUtils.getTileCoords(origin);
         bytes24 zoneID = Node.Zone(originZ);
 
         State state = ds.getState();
@@ -470,23 +469,30 @@ contract TurfWarsZone is ZoneKind, IZone {
             TeamState memory teamState =
                 LibTeamState.decodeTeamState(uint256(state.getData(zoneID, LibUtils.getTeamStateKey(team))));
 
-            require(!teamState.hasPlacedInitHQ, "Team has already placed a base");
-
-            teamState.hasPlacedInitHQ = true;
-
-            _setDataOnZone(
-                ds.getDispatcher(),
-                zoneID,
-                LibUtils.getTeamStateKey(team),
-                bytes32(LibTeamState.encodeTeamState(teamState))
-            );
-
-            // Set starter people on building
             IBase baseImpl = IBase(state.getImplementation(BASE_BUILDING_KIND));
-            baseImpl.zoneAddPerson(ds, mobileUnitID, buildingInstance, DEFAULT_NUM_STARTER_PEOPLE);
+            baseImpl.onConstructLate(ds, mobileUnitID, buildingInstance, !teamState.hasPlacedInitHQ);
+
+            bytes24 buildingTile = state.getFixedLocation(buildingInstance);
+            require(LibUtils.getTileTeam(state, zoneID, buildingTile) == Team.NONE, "Can only build on empty tiles");
+
+            // Initial team bases are built instantly and have starter people
+            if (!teamState.hasPlacedInitHQ) {
+                teamState.hasPlacedInitHQ = true;
+                _setDataOnZone(
+                    ds.getDispatcher(),
+                    zoneID,
+                    LibUtils.getTeamStateKey(team),
+                    bytes32(LibTeamState.encodeTeamState(teamState))
+                );
+
+                setAreaWinner(ds, buildingTile, mobileUnitID, false);
+            } else {
+                _setTileWinner(ds, buildingTile, mobileUnitID, zoneID);
+            }
 
             return;
         } else if (buildingKind == RESEARCH_CENTRE_BUILDING_KIND) {
+            // TODO: Move this inside research centre contract
             // Can only build on your own team's tiles
             Team team = LibUtils.getUnitTeam(state, zoneID, mobileUnitID);
             require(

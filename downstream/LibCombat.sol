@@ -64,6 +64,11 @@ library LibCombat {
         );
     }
 
+    function hasCombatStarted(Game ds, bytes24 buildingInstance) internal returns (bool) {
+        State state = ds.getState();
+        return state.getData(buildingInstance, DATA_BATTLE_START_BLOCK) != bytes32(0);
+    }
+
     function addSoldiers(
         Game ds,
         bytes24 buildingInstance,
